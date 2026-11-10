@@ -1,0 +1,11 @@
+name: disposable WireGuard traffic lab
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f tests/network/Dockerfile -t dtvpn-network-lab .
+      - run: docker run --rm --cap-add NET_ADMIN --cap-add SYS_ADMIN --sysctl net.ipv4.ip_forward=1 --security-opt apparmor=unconfined dtvpn-network-lab

@@ -1,0 +1,7 @@
+{
+  "database": "/var/lib/dtvpn/registry.db",
+  "identity": "/var/lib/dtvpn/server.key",
+  "public_socket": "/run/dtvpn-public/enroll.sock",
+  "admin_socket": "/run/dtvpn-admin/admin.sock",
+  "helper_socket": "/run/dtvpn-helper/helper.sock"
+}

@@ -1,0 +1,17 @@
+[package]
+name = "duct-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+[dependencies]
+duct-core = { path = "../duct-core", default-features = false }
+serde_json.workspace = true
+serde.workspace = true
+p256.workspace = true
+anyhow.workspace = true
+zeroize = "1"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls-native-roots", "json"] }
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"

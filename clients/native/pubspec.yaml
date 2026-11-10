@@ -1,0 +1,23 @@
+name: duct_native
+description: Native lifecycle and protected credential storage for Duct-Tape VPN.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.ducttape.vpn
+        pluginClass: DuctNativePlugin
+      ios:
+        pluginClass: DuctNativePlugin
+        sharedDarwinSource: true
+      macos:
+        pluginClass: DuctNativePlugin
+        sharedDarwinSource: true
+      windows:
+        pluginClass: DuctNativePluginCApi

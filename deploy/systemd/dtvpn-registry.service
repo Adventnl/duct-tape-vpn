@@ -1,0 +1,32 @@
+[Unit]
+Description=Duct-Tape VPN registry
+After=dtvpn-network.service dtvpn-helper.service
+Requires=dtvpn-network.service
+[Service]
+User=dtvpn-registry
+Group=dtvpn-enroll
+SupplementaryGroups=dtvpn-admin dtvpn-helper
+ExecStartPre=+/usr/bin/chown dtvpn-registry:dtvpn-admin /run/dtvpn-admin
+ExecStartPre=+/usr/bin/chmod 2750 /run/dtvpn-admin
+ExecStart=/usr/local/lib/duct-tape-vpn/duct-registry --config /etc/duct-tape-vpn/registry.json
+Restart=on-failure
+RestartSec=3
+StateDirectory=dtvpn
+StateDirectoryMode=0700
+RuntimeDirectory=dtvpn-public dtvpn-admin
+RuntimeDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/dtvpn /run/dtvpn-public /run/dtvpn-admin
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+TasksMax=64
+MemoryMax=256M
+[Install]
+WantedBy=multi-user.target

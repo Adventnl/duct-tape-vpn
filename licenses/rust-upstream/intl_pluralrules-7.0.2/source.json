@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/zbraniecki/pluralrules",
+  "commit": "d0715d5b7cca72e228d6e6c4de154bd30dfdd06a",
+  "notices": [
+    "intl_pluralrules/LICENSE-APACHE",
+    "intl_pluralrules/LICENSE-MIT"
+  ]
+}

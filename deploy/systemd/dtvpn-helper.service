@@ -1,0 +1,28 @@
+[Unit]
+Description=Duct-Tape VPN bounded WireGuard reconciler
+After=dtvpn-network.service
+Requires=dtvpn-network.service
+[Service]
+User=root
+Group=dtvpn-helper
+ExecStart=/usr/local/lib/duct-tape-vpn/duct-helper --socket /run/dtvpn-helper/helper.sock
+RuntimeDirectory=dtvpn-helper
+RuntimeDirectoryMode=0750
+UMask=0007
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+ReadWritePaths=/run/dtvpn-helper
+InaccessiblePaths=/var/lib/dtvpn /run/dtvpn-admin
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+TasksMax=32
+MemoryMax=128M
+[Install]
+WantedBy=multi-user.target

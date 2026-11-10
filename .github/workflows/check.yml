@@ -1,0 +1,43 @@
+name: verify
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: python3 -m unittest discover -s deploy/tests -v
+      - run: cargo build --workspace --release --locked
+      - run: python3 scripts/smoke.py
+      - run: python3 -m pip install -r scripts/test-requirements.txt
+      - run: python3 scripts/test-updates.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64-unsigned
+          path: |
+            target/release/ductctl
+            target/release/duct-registry
+            target/release/duct-gateway
+            target/release/duct-helper
+            target/release/duct-update
+  flutter:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: clients/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

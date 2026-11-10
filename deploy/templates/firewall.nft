@@ -1,0 +1,30 @@
+# This table complements existing policy; it cannot override another base-chain drop.
+# IPv6 is carried into the tunnel and deliberately blocked at the exit in v1.
+# The host and LAN are inaccessible except the owned DNS and private HTTPS admin ingress.
+table inet dtvpn {
+  comment "Duct-Tape VPN managed v1";
+  set private4 {
+    type ipv4_addr; flags interval;
+    elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4, 240.0.0.0/4 }
+  }
+  chain input {
+    type filter hook input priority -10; policy accept;
+    iifname "dtvpn0" ip daddr 10.77.0.1 udp dport 53 accept
+    iifname "dtvpn0" ip daddr 10.77.0.1 tcp dport { 53, 9443 } accept
+    iifname "dtvpn0" drop
+  }
+  chain forward {
+    type filter hook forward priority -10; policy accept;
+    iifname "dtvpn0" meta nfproto ipv6 drop
+    iifname "dtvpn0" ip saddr != 10.77.0.0/24 drop
+    iifname "dtvpn0" ip daddr @private4 drop
+    iifname "dtvpn0" oifname "@EXIT_INTERFACE@" accept
+    iifname "dtvpn0" drop
+    oifname "dtvpn0" ct state established,related accept
+    oifname "dtvpn0" drop
+  }
+  chain nat {
+    type nat hook postrouting priority srcnat; policy accept;
+    ip saddr 10.77.0.0/24 oifname "@EXIT_INTERFACE@" masquerade
+  }
+}

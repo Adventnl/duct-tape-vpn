@@ -1,0 +1,26 @@
+# Merge into an inspected, existing TLS ingress; never overwrite nginx.conf.
+# No access logging: invitation/claim bodies and query values must not be recorded.
+# Public listener has NO route or filesystem permission for administration.
+limit_req_zone $binary_remote_addr zone=dtvpn_enroll:1m rate=6r/m;
+server {
+    listen 443 ssl;
+    server_name REPLACE_WITH_PERSONAL_HOSTNAME;
+    ssl_certificate /REPLACE/fullchain.pem;
+    ssl_certificate_key /REPLACE/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 8k;
+    client_body_timeout 5s;
+    access_log off;
+    location ~ ^/v1/(challenge|claim|poll)$ {
+        limit_req zone=dtvpn_enroll burst=12 nodelay;
+        limit_req_status 429;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 10s;
+        proxy_pass http://127.0.0.1:8787;
+    }
+    location / { return 404; }
+}
+# Separate private admin TLS server binds ONLY 10.77.0.1:9443 with valid hostname certificate.
+# location = /v1/admin { proxy_pass http://unix:/run/dtvpn-admin/admin.sock; }
+# Run its worker as an identity allowed dtvpn-admin, never dtvpn-enroll/gateway.
+# Place the gateway ingress in a separate worker/service identity if existing nginx is privileged.

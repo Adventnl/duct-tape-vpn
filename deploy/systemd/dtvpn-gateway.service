@@ -1,0 +1,23 @@
+[Unit]
+Description=Duct-Tape VPN restricted enrollment gateway
+After=dtvpn-registry.service
+[Service]
+User=dtvpn-gateway
+Group=dtvpn-enroll
+ExecStart=/usr/local/lib/duct-tape-vpn/duct-gateway --socket /run/dtvpn-public/enroll.sock
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+InaccessiblePaths=/var/lib/dtvpn /run/dtvpn-admin /run/dtvpn-helper
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+TasksMax=32
+MemoryMax=128M
+[Install]
+WantedBy=multi-user.target

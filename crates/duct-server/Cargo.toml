@@ -1,0 +1,29 @@
+[package]
+name = "duct-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+duct-core = { path = "../duct-core" }
+anyhow.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+rand.workspace = true
+p256.workspace = true
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["limit", "timeout", "util"] }
+tower-http = { version = "0.6", features = ["limit", "timeout"] }
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json"] }
+zeroize = "1"
+age = "0.11"
+tough = { version = "0.21", features = ["http"] }
+
+[dev-dependencies]
+tempfile = "3"

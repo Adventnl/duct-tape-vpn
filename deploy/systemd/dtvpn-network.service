@@ -1,0 +1,15 @@
+[Unit]
+Description=Duct-Tape VPN owned network resources
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/etc/duct-tape-vpn/network.sh start
+ExecStop=/etc/duct-tape-vpn/network.sh stop
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+ProtectSystem=strict
+ProtectHome=yes
+[Install]
+WantedBy=multi-user.target

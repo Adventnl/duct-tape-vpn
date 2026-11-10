@@ -1,0 +1,51 @@
+# XcodeGen specification for inspecting/building the extension separately.
+# Embed the target in the generated Flutter Runner using docs/PLATFORMS.md.
+name: DuctPacketTunnel
+options:
+  deploymentTarget:
+    iOS: '15.0'
+    macOS: '12.0'
+packages:
+  WireGuard:
+    url: https://github.com/WireGuard/wireguard-apple.git
+    revision: 2fec12a6e1f6e3460b6ee483aa00ad29cddadab1
+settings:
+  base:
+    SWIFT_VERSION: '5.9'
+    CODE_SIGN_STYLE: Manual
+    # Set DEVELOPMENT_TEAM and bundle identifiers in a private xcconfig; never commit profiles/keys.
+targets:
+  PacketTunnel-iOS:
+    type: app-extension
+    platform: iOS
+    sources:
+      - PacketTunnel/PacketTunnelProvider.swift
+      - Sources/SecureStore.swift
+    info:
+      path: PacketTunnel/Info.plist
+    entitlements:
+      path: PacketTunnel/PacketTunnel.entitlements
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: dev.ducttape.ductTapeVpn.PacketTunnel
+      APPLICATION_EXTENSION_API_ONLY: YES
+      LIBRARY_SEARCH_PATHS: '$(inherited) $(CONFIGURATION_BUILD_DIR)'
+    dependencies:
+      - package: WireGuard
+        product: WireGuardKit
+  PacketTunnel-macOS:
+    type: app-extension
+    platform: macOS
+    sources:
+      - PacketTunnel/PacketTunnelProvider.swift
+      - Sources/SecureStore.swift
+    info:
+      path: PacketTunnel/Info.plist
+    entitlements:
+      path: PacketTunnel/PacketTunnel.entitlements
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: dev.ducttape.ductTapeVpn.PacketTunnel
+      APPLICATION_EXTENSION_API_ONLY: YES
+      LIBRARY_SEARCH_PATHS: '$(inherited) $(CONFIGURATION_BUILD_DIR)'
+    dependencies:
+      - package: WireGuard
+        product: WireGuardKit

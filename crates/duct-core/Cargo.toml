@@ -1,0 +1,27 @@
+[package]
+name = "duct-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["registry"]
+registry = ["dep:rusqlite"]
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+rand.workspace = true
+p256.workspace = true
+rusqlite = { workspace = true, optional = true }
+hpke = { version = "0.13", features = ["x25519", "std"] }
+rand09 = { package = "rand", version = "0.9" }
+subtle = "2"
+url = "2"
+zeroize = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"

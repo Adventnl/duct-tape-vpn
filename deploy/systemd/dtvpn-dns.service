@@ -1,0 +1,23 @@
+[Unit]
+Description=Duct-Tape VPN private validating DNS over TLS
+After=dtvpn-network.service
+Requires=dtvpn-network.service
+[Service]
+User=dtvpn-dns
+Group=dtvpn-dns
+ExecStart=/usr/sbin/unbound -d -c /etc/duct-tape-vpn/unbound.conf
+StateDirectory=dtvpn-dns
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/dtvpn-dns
+[Install]
+WantedBy=multi-user.target
