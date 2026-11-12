@@ -1,6 +1,6 @@
 # Safe Ubuntu deployment
 
-No deployment was performed. The previously reported hostname, user, Ubuntu version, addresses, interface and storage are unverified. The cloud executor is Debian, not that server. A noninteractive read-only SSH attempt with explicit host-key checking failed because `hanoryx-server` could not be resolved. Do not disable host-key verification or place SSH secrets in chat/source.
+The 2026-11-12 Windows session reached the owner's Ubuntu server through the paired Link Tunnel agent and deployed the trusted-console personal profile described in [personal setup](PERSONAL-SETUP.md). Its interface and NAT unit are active. A real Windows app test passed Connect, server reachability, tunnel routing, IPv4 HTTPS and Disconnect. DNS passed in the privileged setup check. These checks used LAN transport. The enrollment-based deployment below is a separate path and has not been activated. Keep credentials and private host inventory outside source control.
 
 ## Inspect and plan
 

@@ -1,6 +1,19 @@
 # Status inventory
 
-The requested product is **not complete and is not ready for everyday VPN protection**. This is a substantial source implementation with a locally tested server/control plane, native integration source and reviewable deployment tooling. The core install → pair → approve → ON → verified home exit → close/reopen → OFF journey has not passed on a real device. No home-server networking was changed, no signed client installer was produced and nothing was published.
+The product remains a development build. On 2026-11-12, the mobile interface was rebuilt and the Windows app compiled with its native plugin. A trusted-console personal server profile was deployed through Link Tunnel. The real Windows app passed Connect, server reachability, tunnel route selection, IPv4 HTTPS and Disconnect with ordinary routing restored. No signed Duct-Tape client release was published, and the enrollment journey has not passed on every platform.
+
+## Current Windows and server work
+
+- Flutter 3.50.0 and Dart 3.14.0 run on the Windows development PC. Static analysis and 22 Flutter tests pass, and the Windows debug application builds. Tests cover unverified, expired and failed checks, immediate connection progress, bounded timeouts, and stale snapshots after Disconnect.
+- One real Windows integration test passes through the native plugin and installed service. It taps Connect and Disconnect, checks server ICMP, verifies the route to an internet address uses DuctTape, loads IPv4 HTTPS, and verifies ordinary routing returns after OFF. The privileged setup test also verifies DNS resolution through an explicit resolver.
+- Five real Flutter widget captures cover mobile, compact desktop, dark connected fixtures, large text and settings. Simulated states are explicit. These are not device VPN tests.
+- Nine deployment tests pass, including local key continuity, profile validation and injection rejection.
+- The personal server WireGuard interface and its separately managed NAT unit are active. Existing UFW and Tailscale remain active. Server-side WireGuard reports a successful peer handshake and transferred traffic.
+- Windows can control the fixed official `WireGuardTunnel$DuctTape` service after administrative provisioning. The adapter checks the service executable, configuration path and identity. Its background checks verify VPN routes, home-server ICMP, uncached DNS and IPv4 HTTPS before the UI shows Connected. Failed or expired evidence cannot show Connected. Connection checks do not issue a Protected attestation.
+- The personal profile is configured for LAN transport, full client routes and IPv4 egress. DNS uses explicit public resolvers through the tunnel. IPv6 internet forwarding and external router reachability are not established.
+- The official WireGuard Windows MSI and installed binaries have valid WireGuard LLC Authenticode signatures. Administrator-approved provisioning and its handshake, route, DNS and IPv4 HTTPS checks passed. The tunnel starts manually through the app and was left OFF after validation.
+
+The inventory below records earlier implementation evidence and remaining work. Its cloud access and SDK blockers describe that earlier environment; the Windows/Link Tunnel evidence above supersedes them for this setup.
 
 ## Implemented and locally verified
 

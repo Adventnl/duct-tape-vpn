@@ -11,6 +11,7 @@
 #include <future>
 #include <optional>
 #include <chrono>
+#include "managed_tunnel.h"
 using Json=nlohmann::json;
 namespace {
 std::string Core(const Json& input){
@@ -64,13 +65,26 @@ class Plugin:public flutter::Plugin {
  auto method=call.method_name();auto session=Read(L"DuctTapeVPN/session");
  auto arg=[&](const char* key)->std::string{const auto* m=std::get_if<flutter::EncodableMap>(call.arguments());if(!m)throw std::runtime_error("arguments required");return std::get<std::string>(m->at(flutter::EncodableValue(key)));};
  if(method=="snapshot"){
-  Json status;try{status=Json::parse(Pipe("STATUS"));}catch(...){auto intent=Read(L"DuctTapeVPN/intent");status={{"desired",intent.is_null()?"off":intent.value("desired","off")},{"tunnel","failed"},{"protection","unknown"}};}
+  if(auto managed=ManagedTunnelSnapshot()){
+   flutter::EncodableMap m;
+   for(auto key:{"desired","tunnel","protection","connectionCheck","connectionDetail"})m[flutter::EncodableValue(key)]=flutter::EncodableValue((*managed)[key].get<std::string>());
+   m[flutter::EncodableValue("connectedAt")]=flutter::EncodableValue((*managed)["connectedAt"].get<int64_t>());
+   for(auto key:{"paired","nativeAvailable"})m[flutter::EncodableValue(key)]=flutter::EncodableValue(true);
+   m[flutter::EncodableValue("permission")]=flutter::EncodableValue("granted");
+   m[flutter::EncodableValue("detail")]=flutter::EncodableValue("Connection checks test the VPN route, home server, DNS and IPv4 HTTPS every 10 seconds. IPv6 internet access and a kill switch are not verified.");
+   result->Success(flutter::EncodableValue(m));return;
+  }
+  bool serviceAvailable=true;
+  Json status;try{status=Json::parse(Pipe("STATUS"));}catch(...){serviceAvailable=false;auto intent=Read(L"DuctTapeVPN/intent");status={{"desired",intent.is_null()?"off":intent.value("desired","off")},{"tunnel","failed"},{"protection","unknown"}};}
   flutter::EncodableMap m;for(auto key:{"desired","tunnel","protection"})m[flutter::EncodableValue(key)]=flutter::EncodableValue(status.value(key,"unknown"));
+  m[flutter::EncodableValue("nativeAvailable")]=flutter::EncodableValue(serviceAvailable);
   m[flutter::EncodableValue("paired")]=flutter::EncodableValue(!Read(L"DuctTapeVPN/config").is_null());
   m[flutter::EncodableValue("fingerprint")]=flutter::EncodableValue(session.is_null()?std::string():session.value("fingerprint",std::string()));m[flutter::EncodableValue("enrollment")]=flutter::EncodableValue(session.is_null()?"none":"pending");m[flutter::EncodableValue("owner")]=flutter::EncodableValue(false);
   m[flutter::EncodableValue("permission")]=flutter::EncodableValue("unknown");m[flutter::EncodableValue("detail")]=flutter::EncodableValue("Service and filter state require Windows traffic certification. Configuration import requires the signed installer broker.");result->Success(flutter::EncodableValue(m));
  }else if(method=="setDesired"){
-  const auto& m=std::get<flutter::EncodableMap>(*call.arguments());bool on=std::get<bool>(m.at(flutter::EncodableValue("on")));Save(L"DuctTapeVPN/intent",{{"desired",on?"on":"off"}});auto r=Pipe(on?"ON":"OFF");if(r!="OK")throw std::runtime_error("service rejected request");result->Success();
+  const auto& m=std::get<flutter::EncodableMap>(*call.arguments());bool on=std::get<bool>(m.at(flutter::EncodableValue("on")));
+  if(ManagedTunnelSetDesired(on)){result->Success();return;}
+  Save(L"DuctTapeVPN/intent",{{"desired",on?"on":"off"}});auto r=Pipe(on?"ON":"OFF");if(r!="OK")throw std::runtime_error("service rejected request");result->Success();
  }else if(method=="pair"||method=="refreshEnrollment"){
   if(pending_||!window_){result->Error("busy","Another native request is running");return;}
   Json input;

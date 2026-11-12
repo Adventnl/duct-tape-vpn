@@ -1,6 +1,6 @@
 # Client build and native integration
 
-All four platforms remain in scope. Source adapters are present; no complete native client artifact was produced or signed in this Linux executor. Flutter stable source reports 3.47.9 at commit `c197ca5199e9ee5661e865596c9c07294dfab51c`. Its Dart SDK fetch returned HTTP CONNECT 403 for storage.googleapis.com. The allowlist addition is saved in the environment draft and requires user review/save and publication. Keep TLS and SDK verification enabled; do not work around the policy with an untrusted SDK mirror.
+All four platforms remain in scope. The Windows development PC now uses Flutter 3.50.0 and Dart 3.14.0. Its native client builds, and the personal connection passes a real Windows integration test on the home LAN. See [personal setup](PERSONAL-SETUP.md). Android and Apple builds still require their own SDKs, legitimate provisioning where applicable, and device validation. Earlier cloud SDK download restrictions do not apply to this Windows build environment. Keep TLS and SDK verification enabled.
 
 After that domain is applied, refresh runtime status and retry `flutter --version`, then:
 
@@ -48,6 +48,12 @@ JNI libraries are generated for arm64-v8a, armeabi-v7a and x86_64. Keys/session/
 Users must enable Always-on and “Block connections without VPN” in Android's OS settings for process-crash blocking. A normal app cannot silently enable lockdown. The source does not query an unsupported hidden setting or claim it is enabled. Notification permission, OEM battery restrictions, boot/unlock behavior and all tunnel/lockdown transitions require physical-device tests. Deep-link intent dispatch and camera QR capture are not yet integrated; equivalent invitation paste/import and Owner QR generation are implemented.
 
 ## Windows
+
+The personal setup path uses the official signed WireGuard Windows service, with fixed executable and configuration paths checked by `plugin/managed_tunnel.cpp`. The user receives only query/start/stop service rights. The compiled Flutter client controls that service through its native plugin. A real integration test verifies the app's Connect and Disconnect actions and routed IPv4 traffic. It does not certify failure blocking, reboot behavior or external router reachability.
+
+### Experimental owned service
+
+The older custom service/filter implementation below remains a separate, unvalidated path. It was not installed by personal setup.
 
 The C++ service uses SCM, fixed service/config paths, a single-user/SYSTEM/Admin pipe DACL, remote-pipe rejection and a bounded command vocabulary. The separately installed official tunnel service is named `WireGuardTunnel$dtvpn` with unrestricted service SID, Nsi/TcpIp dependencies and the official WireGuardTunnelService entry point. DLL loading uses a protected installed directory plus system dependencies, never CWD/PATH. WireGuardNT and tunnel.dll are not bundled here.
 

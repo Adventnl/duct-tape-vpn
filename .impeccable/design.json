@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T23:19:30.181Z",
+  "title": "Design System: Duct-Tape VPN",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Connection blue"
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "Dark appearance connection blue"
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Pale gray canvas"
+      },
+      "canvas-dark": {
+        "role": "neutral",
+        "displayName": "Black canvas"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White group surface"
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Charcoal group surface"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Dark ink"
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "White ink"
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Secondary gray"
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "Dark appearance secondary gray"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "VPN title and settings introduction; platform-selected system family."
+      },
+      "headline": {
+        "displayName": "Connection headline",
+        "purpose": "Centered connection sentence with wrapping."
+      },
+      "title": {
+        "displayName": "Theme title",
+        "purpose": "Secondary heading role configured in the theme."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Theme reading style; rows and fields override inherited line height as needed."
+      },
+      "button": {
+        "displayName": "Action",
+        "purpose": "Filled and text actions."
+      },
+      "status": {
+        "displayName": "Status",
+        "purpose": "Live connection explanation and feedback."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Group context and footers; row subtitles use line height 1.4."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "power-decoration",
+        "value": "240ms linear",
+        "purpose": "AnimatedContainer decoration; Duration.zero when MediaQuery.disableAnimationsOf is true. Other animations retain framework defaults."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Light appearance filled action. CSS is a documentation translation; browser focus behavior does not specify Flutter state overlays.",
+      "html": "<button class=\"ds-primary\">Connect</button>",
+      "css": ".ds-primary{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;font-weight:400;background:#0066cc;color:#fff;border:0;border-radius:999px;min-width:120px;min-height:48px;padding:3px 42px}.ds-primary:hover{cursor:pointer}.ds-primary:focus-visible{outline:auto;outline-offset:2px}"
+    },
+    {
+      "name": "Primary action, dark",
+      "kind": "button",
+      "refersTo": "button-primary-dark",
+      "description": "Dark appearance filled action. Minimum dimensions are source values; horizontal padding approximates the framework button plus its padded child.",
+      "html": "<button class=\"ds-primary-dark\">Disconnect</button>",
+      "css": ".ds-primary-dark{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;font-weight:400;background:#2997ff;color:#fff;border:0;border-radius:999px;min-width:120px;min-height:48px;padding:3px 42px}.ds-primary-dark:hover{cursor:pointer}.ds-primary-dark:focus-visible{outline:auto;outline-offset:2px}"
+    },
+    {
+      "name": "Text action",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Settings group action. Material owns hover, pressed and disabled overlays in the app.",
+      "html": "<button class=\"ds-text-action\">Request pairing</button>",
+      "css": ".ds-text-action{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;color:#0066cc;background:transparent;border:0;min-width:44px;min-height:44px;padding:0 12px;text-align:left}.ds-text-action:hover{cursor:pointer}.ds-text-action:focus-visible{outline:auto;outline-offset:2px}"
+    },
+    {
+      "name": "Grouped field",
+      "kind": "input",
+      "refersTo": "group-field",
+      "description": "Borderless field inside a settings group; native Flutter label behavior is not reproduced by this HTML preview.",
+      "html": "<label class=\"ds-field\">Device name<input aria-label=\"Device name\" autocomplete=\"off\"></label>",
+      "css": ".ds-field{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;display:block;padding:18px 16px;background:#fff;color:#1d1d1f}.ds-field input{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;display:block;width:100%;border:0;background:transparent;color:#1d1d1f;padding:12px 0}.ds-field input:focus-visible{outline:auto}"
+    },
+    {
+      "name": "Settings group",
+      "kind": "card",
+      "refersTo": "settings-group",
+      "description": "Solid clipped group with inset half-pixel separators. Row text can wrap.",
+      "html": "<div class=\"ds-group\"><div class=\"ds-group-row\">Home server<small>Personal WireGuard connection</small></div><div class=\"ds-group-row\">Connection<small>Off</small></div></div>",
+      "css": ".ds-group{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;background:#fff;color:#1d1d1f;border-radius:18px;overflow:hidden}.ds-group-row{padding:15px 16px;position:relative}.ds-group-row+ .ds-group-row:before{content:\"\";position:absolute;top:0;left:16px;right:0;border-top:.5px solid rgba(99,99,102,.2)}.ds-group-row small{display:block;font-size:13px;line-height:1.4;color:#636366;margin-top:3px}"
+    },
+    {
+      "name": "Settings navigation row",
+      "kind": "nav",
+      "refersTo": "settings-row",
+      "description": "Body-sized row with trailing Cupertino-style chevron. Inline SVG translates the symbol for the documentation panel.",
+      "html": "<button class=\"ds-nav-row\"><span>Home server<small>Personal WireGuard connection</small></span><svg width=\"15\" height=\"15\" viewBox=\"0 0 15 15\" fill=\"none\" aria-hidden=\"true\"><path d=\"m5.5 2 5 5.5-5 5.5\" stroke=\"currentColor\"/></svg></button>",
+      "css": ".ds-nav-row{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;background:#fff;color:#1d1d1f;border:0;text-align:left}.ds-nav-row span{flex:1}.ds-nav-row small{display:block;font-size:13px;line-height:1.4;color:#636366;margin-top:3px}.ds-nav-row svg{color:#636366}.ds-nav-row:hover{cursor:pointer}.ds-nav-row:focus-visible{outline:auto;outline-offset:2px}"
+    },
+    {
+      "name": "Glass navigation",
+      "kind": "nav",
+      "refersTo": "glass-navigation",
+      "description": "Connection-details navigation with 82% surface fill and faint ink border. CSS blur translates Flutter sigma 20; it is not a pixel-identical raster reference.",
+      "html": "<button class=\"ds-glass\">Connection details<svg width=\"15\" height=\"15\" viewBox=\"0 0 15 15\" fill=\"none\" aria-hidden=\"true\"><path d=\"m5.5 2 5 5.5-5 5.5\" stroke=\"currentColor\"/></svg></button>",
+      "css": ".ds-glass{font-family:'Segoe UI',Arial,sans-serif;font-size:17px;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:15px 16px;border-radius:28px;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(29,29,31,.07);backdrop-filter:blur(20px)}.ds-glass svg{color:#636366}.ds-glass:hover{cursor:pointer}.ds-glass:focus-visible{outline:auto;outline-offset:2px}"
+    },
+    {
+      "name": "Power indicator",
+      "kind": "custom",
+      "refersTo": "power-indicator",
+      "description": "Noninteractive tunnel illustration. The active variant requires desired on and tunnel up; it is not proof of verified protection.",
+      "html": "<div class=\"ds-power\" role=\"img\" aria-label=\"VPN disconnected\"><svg width=\"49\" height=\"49\" viewBox=\"0 0 49 49\" fill=\"none\" aria-hidden=\"true\"><path d=\"M24.5 5v18M14 11a18 18 0 1 0 21 0\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></div>",
+      "css": ".ds-power{display:grid;place-items:center;width:132px;height:132px;border-radius:50%;background:#fff;color:#636366;border:1px solid rgba(99,99,102,.12);transition:background-color 240ms linear,border-color 240ms linear}.ds-power[data-active=\"true\"]{background:rgba(0,102,204,.09);border-color:rgba(0,102,204,.22);color:#0066cc}@media(prefers-reduced-motion:reduce){.ds-power{transition:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Apple utility",
+    "overview": "The interface puts connection status and a single primary action ahead of setup. Pale gray or black surrounds solid grouped surfaces. Blue identifies controls and the active tunnel illustration. The user requested an Apple reference and restrained translucent glass; the build applies glass to the settings control and connection-details navigation.\n\nThis document records `clients/app/lib/main.dart` and `presentation/{components,home,settings}.dart`. The former green dial design is superseded. The implementation combines Material controls with Cupertino icons, switches, routes and dialogs. It does not establish full native platform conformance.",
+    "keyCharacteristics": [
+      "One centered connection action with a separate live status sentence.",
+      "A narrow, scrolling column on mobile and desktop.",
+      "Solid grouped settings with fine inset separators.",
+      "Translucent navigation controls and system font selection."
+    ],
+    "rules": [
+      {
+        "name": "The Control Blue Rule",
+        "body": "Use the theme's blue for actions and the tunnel indicator; keep status explanations readable as text independently of color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scaling Rule",
+        "body": "Preserve Flutter text scaling and vertical scrolling. The large-text capture shows the headline wrapping and lower groups continuing below the viewport.",
+        "section": "typography"
+      },
+      {
+        "name": "The Navigation Glass Rule",
+        "body": "Reuse glass for the settings shortcut and connection-details navigation. Settings forms stay on solid surfaces so labels and entered values remain clear.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Status Separation Rule",
+        "body": "Keep requested state, tunnel state and protection state distinct. An active illustration or \"Connected to home.\" heading does not attest verified protection. Keep the live status sentence and connection-details fields available.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do use the explicit light and dark role pairs together.",
+      "Do retain the single primary action, grouped settings and scrolling text layout.",
+      "Do use framework controls, icons and feedback semantics already present in the Flutter build.",
+      "Do describe connection and protection from their actual state fields."
+    ],
+    "donts": [
+      "Don't restore the superseded green dial palette or its ON/OFF control.",
+      "Don't replace the status explanation with a color-only success cue.",
+      "Don't treat rendered test states as proof of a working VPN connection."
+    ]
+  }
+}

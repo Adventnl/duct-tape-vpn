@@ -2,9 +2,9 @@
 
 A personal WireGuard VPN with your Ubuntu server as its only exit. No account, relay or coordination service.
 
-**Development build, not ready for everyday protection.** The Rust enrollment, registry, gateway, recovery and update verification work locally. Flutter and native integrations are source implementations awaiting platform compilation and device validation. No home-server deployment has been performed. Read [the status inventory](docs/STATUS.md) before installing anything.
+**Development build, not certified for everyday protection.** The Flutter interface has been rebuilt with neutral surfaces, blue controls and restrained glass. The Windows app and personal server profile pass a real Connect, routed IPv4 HTTPS and Disconnect test on the home LAN. Access from outside home remains unverified. Read [personal setup](docs/PERSONAL-SETUP.md) and [the status inventory](docs/STATUS.md) for the current evidence and limits.
 
-The main screen is intentionally quiet: branding, one switch, one truthful status. [View the labeled desktop concept](docs/design/desktop.png), [mobile](docs/design/mobile.png), [dark](docs/design/dark.png) and [large text](docs/design/large-text.png). These are browser-rendered design studies, not screenshots of a working native VPN.
+The main screen has one connection action, verified connection status, a server group and hierarchical settings. It shows Not connected, Connecting or Connected. Connected requires recent successful traffic checks through the VPN. Flutter render tests cover light and dark appearance, phone and compact desktop widths, and double text size. The earlier browser studies in `docs/design/` are archived concepts. They do not represent the current interface.
 
 ## Build and test
 
