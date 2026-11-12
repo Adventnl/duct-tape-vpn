@@ -2,7 +2,7 @@
 
 All four platforms remain in scope. The Windows development PC now uses Flutter 3.50.0 and Dart 3.14.0. Its native client builds, and the personal connection passes a real Windows integration test on the home LAN. See [personal setup](PERSONAL-SETUP.md). Android and Apple builds still require their own SDKs, legitimate provisioning where applicable, and device validation. Earlier cloud SDK download restrictions do not apply to this Windows build environment. Keep TLS and SDK verification enabled.
 
-After that domain is applied, refresh runtime status and retry `flutter --version`, then:
+With Flutter 3.50.0 installed:
 
 ```sh
 scripts/prepare-clients.sh
@@ -11,7 +11,7 @@ flutter analyze
 flutter test
 ```
 
-The preparation script creates standard runners in a temporary directory and copies only missing Android/iOS/macOS/Windows hosts into `clients/app`, preserving existing hosts, UI source and manifests. Review and commit generated projects and `pubspec.lock` after dependency resolution. No lockfile or native generated Runner is fabricated here. Native plugin source is in `clients/native`; the app depends on it by local path.
+Android, iOS, macOS and Windows hosts are checked into `clients/app`. The preparation script copies only missing hosts and preserves existing projects, UI source and manifests. The Android host requires API 26 or later and shares its Gradle/Kotlin plugin versions with the native plugin. Apple builds use CocoaPods for the shared Darwin plugin and Rust XCFramework. Native plugin source is in `clients/native`; the app depends on it by local path.
 
 ## Apple
 
@@ -22,9 +22,15 @@ scripts/build-native.sh apple
 scripts/apple/fetch-wireguard.sh
 ruby scripts/apple/embed-extension.rb macos YOUR_PROVISIONED_BUNDLE_ID
 ruby scripts/apple/embed-extension.rb ios YOUR_PROVISIONED_BUNDLE_ID
+sh scripts/apple/build-client.sh macos
+sh scripts/apple/build-client.sh ios
 ```
 
-The Ruby integration backs up the generated Xcode project, embeds the packet-tunnel extension, adds pinned WireGuardKit and its documented Go make phase. It refuses duplicate extension targets. The standalone XcodeGen specification is also supplied for extension inspection. These scripts could not be executed without Xcode and need first-run review.
+The Ruby integration backs up the Xcode project, embeds the packet-tunnel extension, adds pinned WireGuardKit and its Go make phase, and configures matching Runner and extension Keychain groups. It preserves Flutter's macOS debug entitlements and keeps macOS sandbox keys out of iOS entitlements. It refuses duplicate extension targets. Run it once for each host. Use a fresh checkout when repeating CI probes. The standalone XcodeGen specification is also supplied for extension inspection.
+
+The manual `native build probes` workflow now compiles Android, macOS and iOS applications, including the Apple packet extension. It uses Flutter 3.50.0 and Go 1.20.14 for the pinned WireGuardKitGo runtime patch. Apple builds use `--unsigned` to compile without installing or starting the VPN. That output needs legitimate signing and provisioning before device installation. The workflow has not been run as part of this Windows source check.
+
+`ruby scripts/apple/test-embedding.rb` checks project integration in temporary copies without Xcode. It verifies the embedded extension, source paths, WireGuardKit linkage, matching Keychain groups, platform-specific entitlements and refusal to add a duplicate extension. Both platforms pass on Windows. This checks project configuration, not Swift compilation.
 
 Provision the Runner and extension for Network Extension packet tunnels and their shared Keychain access group. Set the extension identifier to the Runner identifier plus `.PacketTunnel`; set `DuctKeychainGroup` in both Info.plists to the exact profile-authorized shared group. Use separate appropriate iOS/macOS entitlements and the Runner's required network sandbox permissions. Supply DEVELOPMENT_TEAM/profiles privately. The sample entitlement file is a starting point, not evidence of entitlement availability. Build WireGuardKitGo with the installed Go toolchain and Xcode build variables as required by its Makefile; validate library search/output placement on the first build.
 

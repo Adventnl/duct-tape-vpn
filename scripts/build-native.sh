@@ -18,8 +18,10 @@ case "${1:-}" in
    lipo -create target/aarch64-apple-ios-sim/release/libduct_bridge.a target/x86_64-apple-ios/release/libduct_bridge.a -output "$scratch/simulator.a"
    lipo -create target/aarch64-apple-darwin/release/libduct_bridge.a target/x86_64-apple-darwin/release/libduct_bridge.a -output "$scratch/macos.a"
    mkdir -p clients/native/darwin/Libraries
-   test ! -e clients/native/darwin/Libraries/DuctBridge.xcframework
-   xcodebuild -create-xcframework -library target/aarch64-apple-ios/release/libduct_bridge.a -library "$scratch/simulator.a" -library "$scratch/macos.a" -output clients/native/darwin/Libraries/DuctBridge.xcframework
+   xcodebuild -create-xcframework -library target/aarch64-apple-ios/release/libduct_bridge.a -library "$scratch/simulator.a" -library "$scratch/macos.a" -output "$scratch/DuctBridge.xcframework"
+   # Only replace the owned artifact after all slices have built successfully.
+   rm -rf clients/native/darwin/Libraries/DuctBridge.xcframework
+   cp -R "$scratch/DuctBridge.xcframework" clients/native/darwin/Libraries/
    ;;
  windows)
    cargo build -p duct-bridge --target x86_64-pc-windows-msvc --release --locked

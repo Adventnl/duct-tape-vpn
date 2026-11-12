@@ -11,7 +11,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.91.1
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.9'
+          flutter-version: '3.50.0'
           channel: stable
       - shell: bash
         run: |
@@ -38,7 +38,7 @@ jobs:
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.9'
+          flutter-version: '3.50.0'
           channel: stable
       - run: cargo install cargo-ndk --locked
       - run: |
@@ -54,22 +54,38 @@ jobs:
         with:
           name: android-debug-build-probe
           path: clients/app/build/app/outputs/flutter-apk/app-debug.apk
-  apple-source:
+  apple:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos, ios]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.91.1
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.9'
+          flutter-version: '3.50.0'
           channel: stable
+      - uses: actions/setup-go@v5
+        with:
+          # The pinned WireGuardKitGo source patches this Go runtime.
+          go-version: '1.20.14'
+      - run: gem install xcodeproj --no-document
+      - run: ruby scripts/apple/test-embedding.rb
       - run: |
           scripts/prepare-clients.sh
           scripts/build-native.sh apple
           scripts/apple/fetch-wireguard.sh
-          ruby -c scripts/apple/embed-extension.rb
+          ruby scripts/apple/embed-extension.rb ${{ matrix.platform }} dev.ducttape.ductTapeVpn
           cd clients/app
           flutter analyze
           flutter test
-      # Embedding/provisioning and WireGuardKitGo first-build review remain explicit steps.
-      # Do not claim an entitled app/extension build from this source-only probe.
+      - run: sh scripts/apple/build-client.sh ${{ matrix.platform }} --unsigned
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-unsigned-build-probe
+          path: |
+            clients/app/build/macos/Build/Products/Debug/*.app
+            clients/app/build/ios/iphoneos/*.app
+          if-no-files-found: error

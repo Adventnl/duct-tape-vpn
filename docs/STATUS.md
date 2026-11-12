@@ -33,6 +33,8 @@ Test commands are in README.md. Zero-test binary/doc harnesses are not counted a
 
 ## Native implementation boundaries
 
+On 2026-11-12, the Android, iOS and macOS Flutter hosts were added to source. Android's minimum SDK and shared Gradle/Kotlin versions now match the native plugin. Apple setup configures Runner and packet-extension entitlements, shared Keychain access and bundle metadata. The manual native workflow now includes unsigned macOS and iOS application compilation instead of stopping at Apple source preparation. Flutter analysis and all 22 shared tests pass on Windows. No VPN connectivity tests were run for this platform work. Android SDK/NDK and Xcode compilation have not run here, so these changes do not establish native build or device success.
+
 - **macOS:** Flutter UI, Keychain storage, separate Secure Enclave/user-presence Owner identity, bootstrap import, Owner operations and independent Network Extension/WireGuardKit source. Requires actual Xcode project generation/embedding, provisioning, compile, signing and MacBook/hardware testing.
 - **iOS:** Shared UI, protected native keys, enrollment and PacketTunnelProvider source. Requires legitimate app/extension profiles, Xcode/iOS build and physical-device testing. Developer Mode is insufficient evidence of entitlement access.
 - **Android:** Official GoBackend integration, Keystore-sealed state, permission lifecycle, foreground supervisor, ON preference/retries and boot receiver source. Requires Flutter/SDK/NDK compilation and device testing; user-enabled OS lockdown is necessary for crash blocking.

@@ -17,3 +17,4 @@ dist/
 /clients/native/windows/bin/
 *.before-dtvpn/
 /artifacts/
+**/*.iml
