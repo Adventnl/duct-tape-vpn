@@ -22,7 +22,7 @@ Server private keys and preparation state stay under `/etc/duct-tape-vpn/persona
 
 ## Verification limits
 
-The configured endpoint is on the home LAN. A successful LAN handshake will not establish reachability from outside the home network. Router forwarding or a separately validated reachable endpoint is still needed for that use.
+The configured Windows endpoint is on the home LAN. Router UDP forwarding and public IPv4 access were subsequently verified from a mobile-data hotspot using the separate native Mac client; see [native Mac setup](MAC-PERSONAL.md). The Windows profile still needs a public endpoint and its own outside-home test before remote Windows use is established.
 
 The profile routes both IPv4 and IPv6 into the tunnel. This personal server profile forwards IPv4 only, so IPv6 internet access is intentionally unavailable through it. DNS uses Cloudflare's public resolvers through the tunnel; a private validating resolver is not part of this profile.
 

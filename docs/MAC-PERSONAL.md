@@ -79,9 +79,34 @@ WireGuard has no traffic obfuscation; China reachability is not guaranteed.
 On 2026-11-12 the native build, installation, actual app Connect/Disconnect,
 ordinary-route restoration, and continued traffic after app closure were tested
 on the owner's MacBook. The successful connection used the server's public IPv6
-address with Tailscale's backend explicitly stopped. Public IPv4 did not complete
-a handshake from home; NAT loopback and external forwarding remain unresolved.
-The owner deferred router review and outside-home testing.
+address with Tailscale's backend explicitly stopped.
+
+Later that day, the Huawei DN8245X6-10 router's active fibre WAN address matched
+the independently observed public IPv4 address. An enabled user-defined mapping,
+`DuctTape-WireGuard`, forwards only UDP 51820 to the existing server's LAN address
+and port 51820. Its saved WAN, host, protocol and port values were reopened and
+verified in the router UI. Live endpoint and host inventory remain outside source.
+
+The Mac then connected through a phone's mobile-data hotspot with a different
+public IPv4 address and no IPv6 underlay. The real app displayed Connected using
+the public IPv4 endpoint. Helper checks passed authenticated handshake, tunnel
+routes, server ICMP, uncached explicit DNS and TLS-validated IPv4 HTTPS. Additional
+checks confirmed an internet route through the owned tunnel, replies from the
+server, and HTTPS bound to that tunnel reporting the home WAN exit address.
+
+Tailscale was running during this test and its supplemental DNS resolver took
+priority over the VPN's configured resolvers. Explicit DNS queries succeeded but
+ordinary hostname resolution timed out. Setting `tailscale set --accept-dns=false`
+on this Mac resolved the conflict: both tunnel-bound HTTPS to a hostname and
+ordinary HTTPS to `example.com` then passed while the VPN remained connected.
+This setting disables Tailscale-provided DNS names on this Mac; IP-based Tailscale
+configuration is retained. Restore with `tailscale set --accept-dns=true` if needed,
+and retest coexistence before relying on both VPNs together.
+
+The final test disconnected the owned tunnel and confirmed OFF. This validates
+outside-home IPv4 access on the tested mobile network, not every network or
+censorship resistance. NAT loopback, outside-home IPv6, address-change recovery
+and server LAN-address stability across DHCP changes remain unverified.
 
 The public status file is `/var/db/duct-tape-vpn/status.json`; it contains no
 private keys. Detailed helper output is restricted to root in that directory.
