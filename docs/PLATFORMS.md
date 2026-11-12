@@ -15,6 +15,8 @@ Android, iOS, macOS and Windows hosts are checked into `clients/app`. The prepar
 
 ## Apple
 
+For the separately implemented, local personal Mac client, see [native Mac setup](MAC-PERSONAL.md). It builds using Command Line Tools and uses a root-owned WireGuard userspace helper, without Apple Developer membership or Network Extension provisioning. It has no kill switch. The Flutter/Network Extension path below remains a separate build and still requires provisioning.
+
 Use a Mac with current compatible Xcode, CocoaPods/xcodeproj, Go, Rust cross targets and legitimate Apple signing/provisioning. The upstream WireGuard package supports macOS 12/iOS 15 minimums and links a separately built Go library. Its MIT license and exact pinned source are recorded in the notices. The native crypto static library is built as a multi-platform XCFramework:
 
 ```sh

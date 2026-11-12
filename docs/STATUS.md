@@ -2,6 +2,14 @@
 
 The product remains a development build. On 2026-11-12, the mobile interface was rebuilt and the Windows app compiled with its native plugin. A trusted-console personal server profile was deployed through Link Tunnel. The real Windows app passed Connect, server reachability, tunnel route selection, IPv4 HTTPS and Disconnect with ordinary routing restored. No signed Duct-Tape client release was published, and the enrollment journey has not passed on every platform.
 
+## Current native Mac work
+
+On 2026-11-12, a standalone SwiftUI/AppKit personal client was compiled on the owner's Apple Silicon Mac using Command Line Tools and installed as `/Applications/Duct-Tape VPN.app`. This local ad-hoc build uses a separately installed root-owned WireGuard Go/tools/Bash runtime and a LaunchDaemon, rather than the original Flutter Network Extension. Non-system dynamic libraries are bundled privately; installed tools and libraries have root ownership, no group/world write permission, and no user-writable Homebrew library bindings. The app receives only fixed connect/disconnect helper permission, not general passwordless sudo.
+
+The server received a separate Mac peer and narrow persistent IPv4 NAT/UFW rules through Link Tunnel. The existing Windows peer, UFW policy and server Tailscale service were retained. The real Mac app's Connect and Disconnect actions passed. With the Mac's Tailscale backend explicitly `Stopped`, a direct handshake to the server's public IPv6 address, server ICMP, owned tunnel route selection, uncached DNS and TLS-validated IPv4 HTTPS passed. Disconnect removed the owned interface and restored ordinary routing. App closure also retained a fresh successful connection check with Tailscale stopped.
+
+Public IPv4 attempts did not complete a handshake from home. This does not distinguish missing forwarding from unsupported NAT loopback. Router review and testing from an independent network were deferred by the owner. Using a public IPv6 address on the same home LAN does not validate the router's external inbound policy. The app is not established as travel-ready or censorship resistant. It has no kill switch; IPv6 internet egress is unavailable with the current personal server. ON intent is persisted for automatic reconnect, but reboot, sleep/wake and daemon-crash acceptance tests have not run. See [native Mac setup](MAC-PERSONAL.md).
+
 ## Current Windows and server work
 
 - Flutter 3.50.0 and Dart 3.14.0 run on the Windows development PC. Static analysis and 22 Flutter tests pass, and the Windows debug application builds. Tests cover unverified, expired and failed checks, immediate connection progress, bounded timeouts, and stale snapshots after Disconnect.

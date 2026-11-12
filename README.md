@@ -2,7 +2,7 @@
 
 A personal WireGuard VPN with your Ubuntu server as its only exit. No account, relay or coordination service.
 
-**Development build, not certified for everyday protection.** The Flutter interface has been rebuilt with neutral surfaces, blue controls and restrained glass. The Windows app and personal server profile pass a real Connect, routed IPv4 HTTPS and Disconnect test on the home LAN. Access from outside home remains unverified. Read [personal setup](docs/PERSONAL-SETUP.md) and [the status inventory](docs/STATUS.md) for the current evidence and limits.
+**Development build, not certified for everyday protection.** The Flutter interface has been rebuilt with neutral surfaces, blue controls and restrained glass. The Windows app and personal server profile pass a real Connect, routed IPv4 HTTPS and Disconnect test on the home LAN. A standalone native Mac client is also installed and passes direct WireGuard, routed IPv4 HTTPS, DNS and Connect/Disconnect checks with Tailscale stopped. The Mac uses the server's public IPv6 address, tested from home; access from outside home remains unverified. Read [Windows personal setup](docs/PERSONAL-SETUP.md), [native Mac setup](docs/MAC-PERSONAL.md) and [the status inventory](docs/STATUS.md) for evidence and limits.
 
 The main screen has one connection action, verified connection status, a server group and hierarchical settings. It shows Not connected, Connecting or Connected. Connected requires recent successful traffic checks through the VPN. Flutter render tests cover light and dark appearance, phone and compact desktop widths, and double text size. The earlier browser studies in `docs/design/` are archived concepts. They do not represent the current interface.
 
