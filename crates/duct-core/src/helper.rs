@@ -30,18 +30,33 @@ impl PeerSet {
         }
         Ok(())
     }
-    pub fn syncconf(&self) -> Result<String> {
+    pub fn set_args(&self, existing: &[String]) -> Result<Vec<String>> {
         use base64::Engine;
         self.validate()?;
-        let mut text = String::new();
+        ensure!(existing.len() <= 250, "too many existing peers");
+        let engine = base64::engine::general_purpose::STANDARD;
+        let mut args = Vec::new();
+        let mut desired = std::collections::HashSet::new();
         for p in &self.peers {
-            text.push_str(&format!(
-                "[Peer]\nPublicKey = {}\nAllowedIPs = 10.77.0.{}/32, fd77:6474:7670::{:x}/128\n\n",
-                base64::engine::general_purpose::STANDARD.encode(crypto::decode(&p.public_key)?),
-                p.slot,
-                p.slot
-            ));
+            let key = engine.encode(crypto::decode(&p.public_key)?);
+            desired.insert(key.clone());
+            args.extend([
+                "peer".to_owned(),
+                key,
+                "allowed-ips".to_owned(),
+                format!("10.77.0.{}/32,fd77:6474:7670::{:x}/128", p.slot, p.slot),
+            ]);
         }
-        Ok(text)
+        for key in existing {
+            let decoded = engine.decode(key)?;
+            ensure!(
+                decoded.len() == 32 && engine.encode(&decoded) == *key,
+                "invalid existing peer"
+            );
+            if !desired.contains(key) {
+                args.extend(["peer".to_owned(), key.clone(), "remove".to_owned()]);
+            }
+        }
+        Ok(args)
     }
 }

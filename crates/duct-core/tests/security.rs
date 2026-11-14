@@ -333,8 +333,10 @@ fn helper_restricts_addresses_and_commands() {
             slot: 3,
         }],
     };
-    let conf = good.syncconf().unwrap();
-    assert!(conf.contains("10.77.0.3/32, fd77:6474:7670::3/128"));
+    let args = good.set_args(&[]).unwrap();
+    assert_eq!(args[0], "peer");
+    assert_eq!(args[2], "allowed-ips");
+    assert_eq!(args[3], "10.77.0.3/32,fd77:6474:7670::3/128");
     assert!(
         PeerSet {
             revision: 1,
@@ -363,6 +365,64 @@ fn helper_restricts_addresses_and_commands() {
     assert!(
         serde_json::from_str::<PeerSet>(r#"{"revision":1,"peers":[],"command":"sh"}"#).is_err()
     );
+}
+#[test]
+fn helper_reconciles_complete_peer_set_without_interface_mutation() {
+    use base64::Engine;
+    let standard =
+        |key: &str| base64::engine::general_purpose::STANDARD.encode(crypto::decode(key).unwrap());
+    let retained = crypto::wg_keypair().1;
+    let removed = crypto::wg_keypair().1;
+    let added = crypto::wg_keypair().1;
+    let existing = vec![standard(&retained), standard(&removed)];
+    let desired = PeerSet {
+        revision: 2,
+        peers: vec![
+            Peer {
+                public_key: retained.clone(),
+                slot: 3,
+            },
+            Peer {
+                public_key: added.clone(),
+                slot: 6,
+            },
+        ],
+    };
+    assert_eq!(
+        desired.set_args(&existing).unwrap(),
+        vec![
+            "peer".to_owned(),
+            standard(&retained),
+            "allowed-ips".to_owned(),
+            "10.77.0.3/32,fd77:6474:7670::3/128".to_owned(),
+            "peer".to_owned(),
+            standard(&added),
+            "allowed-ips".to_owned(),
+            "10.77.0.6/32,fd77:6474:7670::6/128".to_owned(),
+            "peer".to_owned(),
+            standard(&removed),
+            "remove".to_owned(),
+        ]
+    );
+    let empty = PeerSet {
+        revision: 3,
+        peers: vec![],
+    };
+    assert_eq!(
+        empty.set_args(&existing).unwrap(),
+        vec![
+            "peer".to_owned(),
+            standard(&retained),
+            "remove".to_owned(),
+            "peer".to_owned(),
+            standard(&removed),
+            "remove".to_owned(),
+        ]
+    );
+    assert!(empty.set_args(&[]).unwrap().is_empty());
+    for invalid in ["--help", "bad\npeer injected", "AAAA"] {
+        assert!(desired.set_args(&[invalid.to_owned()]).is_err());
+    }
 }
 #[test]
 fn no_protection_claim_without_fresh_verification() {

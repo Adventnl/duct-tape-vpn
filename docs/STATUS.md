@@ -2,6 +2,32 @@
 
 The product remains a development build. On 2026-11-12, the mobile interface was rebuilt and the Windows app compiled with its native plugin. A trusted-console personal server profile was deployed through Link Tunnel. The real Windows app passed Connect, server reachability, tunnel route selection, IPv4 HTTPS and Disconnect with ordinary routing restored. No signed Duct-Tape client release was published, and the enrollment journey has not passed on every platform.
 
+## Server reconciliation repair — 2026-11-14
+
+Both Mac and phone failed to connect after enrollment deployment. Inspection via
+the paired LinkTunnel remote CLI found every service active but the live
+WireGuard interface had no private key and its listening port changed between
+reads. The saved interface configuration retained the original identity and UDP
+51820. The registry's two-second peer reconciliation used peer-only `syncconf`,
+which resets omitted interface fields.
+
+The helper now uses validated `wg set` peer updates and explicit peer removals,
+preserving interface identity, port and routing mark. The fixed Linux release
+helper was deployed with a root-only binary/config backup; the saved key and port
+were restored without restarting the shared interface or changing registered
+peers. All seven VPN services remained active, and eight reconciliation cycles
+preserved the identity, UDP port and four registered peers.
+
+All 26 core security tests and strict core/server Clippy checks passed on macOS
+and Ubuntu. `scripts/test-helper-reconcile.py` passed against the real release
+helper in an isolated Linux network namespace, covering repeated additions and
+removals, rejected invalid requests, empty desired sets, preserved server
+identity/port/mark, and retained endpoint/keepalive/preshared-key settings. From
+the current outside-home Wi-Fi, the Mac's handshake, routes, server reachability,
+DNS and HTTPS checks passed and HTTPS reported the home exit address. The owner
+also confirmed the phone displayed Connected after reconnecting. The Mac was
+left connected.
+
 ## Current native Mac work
 
 On 2026-11-12, a standalone SwiftUI/AppKit personal client was compiled on the owner's Apple Silicon Mac using Command Line Tools and installed as `/Applications/Duct-Tape VPN.app`. This local ad-hoc build uses a separately installed root-owned WireGuard Go/tools/Bash runtime and a LaunchDaemon, rather than the original Flutter Network Extension. Non-system dynamic libraries are bundled privately; installed tools and libraries have root ownership, no group/world write permission, and no user-writable Homebrew library bindings. The app receives only fixed connect/disconnect helper permission, not general passwordless sudo.

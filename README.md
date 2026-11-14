@@ -36,6 +36,13 @@ docker run --rm --cap-add NET_ADMIN --cap-add SYS_ADMIN \
 
 This changes only the test container's networking. A host kernel supporting WireGuard is required. An explicitly labeled official wireguard-go fallback needs a permitted `/dev/net/tun`; it does not validate Linux kernel integration. The cloud executor used here has neither capability, so VPN traffic tests have not passed here.
 
+On a Linux host with root and kernel WireGuard, test the real peer reconciler in
+a disposable network namespace (the host interface is untouched):
+
+```sh
+sudo python3 scripts/test-helper-reconcile.py target/release/duct-helper
+```
+
 For clients, see [platform build instructions](docs/PLATFORMS.md). Standard Flutter runners are generated using `scripts/prepare-clients.sh`; existing hosts and product sources are preserved. Native crypto builds use `scripts/build-native.sh`. Flutter SDK downloads need `storage.googleapis.com`; the required environment-policy addition was saved as a draft, not applied.
 
 ## Android activation
