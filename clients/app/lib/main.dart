@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 
 import 'application/vpn_controller.dart';
@@ -48,7 +49,7 @@ class _DuctTapeAppState extends State<DuctTapeApp> {
       colorScheme: ColorScheme.fromSeed(seedColor: blue, brightness: brightness)
           .copyWith(
             primary: blue,
-            onPrimary: Colors.white,
+            onPrimary: dark ? Colors.black : Colors.white,
             surface: dark ? const Color(0xff1c1c1e) : Colors.white,
           ),
       cupertinoOverrideTheme: CupertinoThemeData(
@@ -75,6 +76,7 @@ class _DuctTapeAppState extends State<DuctTapeApp> {
           ),
           shape: const StadiumBorder(),
           backgroundColor: blue,
+          foregroundColor: dark ? Colors.black : Colors.white,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -91,7 +93,10 @@ class _DuctTapeAppState extends State<DuctTapeApp> {
       inputDecorationTheme: const InputDecorationTheme(
         border: InputBorder.none,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
+        systemOverlayStyle: dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         centerTitle: false,
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -104,6 +109,12 @@ class _DuctTapeAppState extends State<DuctTapeApp> {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Duct-Tape VPN',
     debugShowCheckedModeBanner: false,
+    builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+      value: Theme.of(context).brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: child!,
+    ),
     theme: theme(Brightness.light),
     darkTheme: theme(Brightness.dark),
     home: Home(controller: widget.controller),

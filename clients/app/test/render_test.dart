@@ -83,6 +83,22 @@ void main() {
   });
 
   for (final scenario in [
+    (
+      'activation',
+      const Size(390, 844),
+      1.0,
+      Brightness.light,
+      const VpnState(),
+      true,
+    ),
+    (
+      'activation-dark-large',
+      const Size(320, 720),
+      2.0,
+      Brightness.dark,
+      const VpnState(),
+      true,
+    ),
     ('mobile', const Size(390, 844), 1.0, Brightness.light, off, false),
     ('desktop', const Size(460, 780), 1.0, Brightness.light, off, false),
     (

@@ -38,6 +38,15 @@ This changes only the test container's networking. A host kernel supporting Wire
 
 For clients, see [platform build instructions](docs/PLATFORMS.md). Standard Flutter runners are generated using `scripts/prepare-clients.sh`; existing hosts and product sources are preserved. Native crypto builds use `scripts/build-native.sh`. Flutter SDK downloads need `storage.googleapis.com`; the required environment-policy addition was saved as a draft, not applied.
 
+## Android activation
+
+The Android client supports server address + one-use activation code, saved for
+future connections. The first trusted-console command is
+`sudo dvpn generate --origin https://YOUR-SERVER`; later runs are `sudo dvpn generate`.
+The server must run the updated registry, gateway and TLS ingress. The existing
+personal WireGuard-only deployment requires a separate migration first.
+See [Android installation and activation](docs/ANDROID-ACTIVATION.md).
+
 ## Server workflow
 
 Start with [safe deployment](docs/DEPLOYMENT.md). `deploy/dtvpn.py inspect` is read-only. Its plan and staging commands do not activate services, install packages, change forwarding, or alter host/router firewall rules. Never deploy a generic plan to a multipurpose host without reviewing its actual inspection.

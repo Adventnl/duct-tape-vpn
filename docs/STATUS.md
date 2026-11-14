@@ -68,3 +68,55 @@ The network-policy addition and reusable `start_skill` toolchain/test instructio
 External access alone will not finish the product. Native build failures must be fixed when the SDKs become available. Missing product work includes a real home-exit/DNS verification pipeline, full Windows enrollment-to-service configuration handoff, robust endpoint recovery and deliberate identity rotation, safe pool/subnet-overlap handling, enforceable trusted-resource profiles, native deep-link/camera import, installer receipts/update handoff, platform accessibility audits and production packaging. Trusted-network exceptions are disabled; native adapters never emit a Protected attestation. These are explicit gaps, not implemented features awaiting only a checkbox.
 
 The safest next milestone is the Owner MacBook plus Ubuntu vertical slice after read-only host inspection and legitimate Apple provisioning. Prepare and approve the exact host-specific network changes only after that inspection; do not activate the generic templates blindly. Keep Windows, iOS and Android in the acceptance matrix and extend the verified journey across them.
+
+
+## Android activation and icon build — 2026-11-14
+
+The Mac now builds Android locally using Flutter 3.50.0, JDK 17, SDK 36 and NDK
+28.2.13676358. A release-mode APK with development signing is generated at
+`dist/Duct-Tape-VPN-android-development.apk`. APK signature verification passed;
+Rust, WireGuard, Flutter and app libraries are packaged for arm64-v8a,
+armeabi-v7a and x86_64. The same APK installed and launched on an Android 36 ARM64
+emulator. Activation layouts were inspected at phone and tablet sizes, light/dark
+appearance and larger text. A rejected activation showed a recoverable error,
+retained input and did not report a saved connection or crash the native process.
+
+Server-console `generate` issues expiring, single-use codes; entering server
+address + code saves a client connection after reconciliation, with automatic
+polling and no second Owner approval. The CLI remembers its HTTPS origin. Real
+local registry/gateway smoke checks pass for code issuance/redemption, automatic
+Client authorization, no public admin route, no reuse and remembered origin.
+The Rust suite, clippy, Flutter analysis/tests and deployment Python tests pass.
+The new Android connection verifier binds HTTPS to the owned VPN network and
+checks recent WireGuard traffic; it still requires real server/device validation.
+
+The installed standalone Mac app now includes the shared tape icon and its
+`CFBundleIconFile`, and its ad-hoc signature verifies. Its app bundle was backed
+up under `/Library/Application Support/Duct-Tape VPN` before the icon update.
+Helper, profile and tunnel state were preserved.
+
+This work has not deployed the new registry/gateway/TLS route to the home server.
+The saved SSH name `hanoryx-server` did not resolve on this Mac. The existing
+personal WireGuard-only server needs an inspected migration preserving current
+Mac/Windows peers before registry reconciliation can own that tunnel. No
+physical Android tunnel or outside-home Android traffic success is claimed.
+
+
+## Android code-only setup — 2026-11-14
+
+Version 0.1.1 (Android versionCode 2) builds with a personal HTTPS enrollment
+origin supplied through `DUCT_ACTIVATION_ORIGIN`. Its pairing screen presents one
+activation-code input and Activate device. Generic builds retain manual server
+and Owner invitation setup. The origin remains public build configuration;
+one-use codes and private keys are not embedded.
+
+The three native ABI builds, Flutter analysis and all 30 Flutter tests passed,
+including code normalization, keyboard submission, invalid/rejected-code recovery
+and generic setup. APK signature verification passed and its signer matched the
+previous APK. `adb install -r` successfully updated the emulator from 0.1.0 to
+0.1.1. Real emulator screenshots checked phone light appearance and tablet-sized
+dark appearance with 1.3 font scale; the accessibility tree confirmed one input.
+Evidence: `artifacts/android/code-only-phone-light.png`,
+`artifacts/android/code-only-tablet-dark-large.png` and local build/signature logs.
+The APK is available at `dist/Duct-Tape-VPN-0.1.1.apk` with a SHA-256 sidecar.
+Physical-phone activation and tunnel operation were not exercised in this task.

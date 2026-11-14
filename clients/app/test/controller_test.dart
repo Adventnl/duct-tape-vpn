@@ -13,6 +13,7 @@ class ControlledPort implements VpnPort {
   );
   Future<VpnState> Function()? read;
   Future<void> Function(bool)? change;
+  Future<Map<Object?, Object?>> Function()? enroll;
   @override
   Future<VpnState> snapshot() async => read != null ? read!() : state;
   @override
@@ -29,7 +30,8 @@ class ControlledPort implements VpnPort {
   Future<Map<Object?, Object?>> pair(String invitation, String name) async =>
       {};
   @override
-  Future<Map<Object?, Object?>> refreshEnrollment() async => {};
+  Future<Map<Object?, Object?>> refreshEnrollment() async =>
+      enroll != null ? enroll!() : {};
   @override
   Future<Map<Object?, Object?>> administer(
     Map<String, Object?> operation,
@@ -37,6 +39,28 @@ class ControlledPort implements VpnPort {
 }
 
 void main() {
+  test(
+    'activation resumes automatically and survives an offline server',
+    () async {
+      final port = ControlledPort()
+        ..state = const VpnState(enrollment: 'pending');
+      final controller = VpnController(port);
+      addTearDown(controller.dispose);
+      port.enroll = () async => throw StateError('Server offline');
+      await controller.refresh();
+      expect(controller.state.nativeAvailable, isTrue);
+      expect(controller.state.enrollment, 'pending');
+      expect(controller.state.paired, isFalse);
+      port.enroll = () async {
+        port.state = const VpnState(paired: true, enrollment: 'ready');
+        return {'status': 'ready'};
+      };
+      await controller.refresh();
+      expect(controller.state.paired, isTrue);
+      expect(controller.state.enrollment, 'ready');
+    },
+  );
+
   test(
     'connect shows progress immediately and a stalled check times out',
     () async {

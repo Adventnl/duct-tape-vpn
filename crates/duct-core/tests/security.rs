@@ -448,3 +448,206 @@ fn standard_tls_port_is_valid_for_udp_transport() {
     assert!(endpoint_valid("[2001:db8::1]:443").is_ok());
     assert!(endpoint_valid("vpn.example.org:0").is_err());
 }
+
+#[test]
+fn server_activation_saves_one_client_without_owner_approval() {
+    let mut f = Fixture::new();
+    let generated =
+        f.db.generate_activation("https://vpn.example.org", 300, NOW)
+            .unwrap();
+    let code = generated["code"].as_str().unwrap();
+    assert_eq!(code.len(), 24);
+    let invitation =
+        f.db.resolve_activation(&code.to_lowercase().replace('-', " "), NOW)
+            .unwrap();
+    assert_eq!(invitation["server_key"], crypto::public(&f.server));
+    let token = invitation["token"].as_str().unwrap().to_owned();
+    let (claim, _, key) = f.claim(token.clone());
+    let (other, _, _) = f.claim(token);
+    let id = claim.id.clone();
+    f.db.claim(claim, NOW).unwrap();
+    assert!(f.db.claim(other, NOW).is_err());
+    assert!(f.db.resolve_activation(code, NOW).is_err());
+    assert_eq!(f.poll(id.clone(), &key)["status"], "provisioning");
+    let desired = f.db.desired_peers().unwrap();
+    assert_eq!(desired.peers.len(), 2);
+    f.db.mark_applied(desired.revision).unwrap();
+    assert_eq!(f.poll(id.clone(), &key)["status"], "ready");
+    let mut admin = f.request(Operation::Invite { ttl_seconds: 300 });
+    admin.signature = crypto::sign(&key, &bytes("admin", &admin.payload).unwrap());
+    assert!(f.db.admin(admin, NOW).is_err());
+    f.admin(Operation::Revoke { id: id.clone() });
+    assert_eq!(f.poll(id, &key)["status"], "revoked");
+}
+
+#[test]
+fn activation_requires_server_issuance_and_expires() {
+    let mut f = Fixture::new();
+    assert!(
+        f.db.resolve_activation("AAAA-BBBB-CCCC-DDDD-EEEE", NOW)
+            .is_err()
+    );
+    for origin in [
+        "http://example.org",
+        "https://a.example/path",
+        "https://user@a.example",
+        "https://a.example?x=1",
+    ] {
+        assert!(f.db.generate_activation(origin, 300, NOW).is_err());
+    }
+    assert!(
+        f.db.generate_activation("https://vpn.example.org", 901, NOW)
+            .is_err()
+    );
+    let generated =
+        f.db.generate_activation("https://vpn.example.org", 30, NOW)
+            .unwrap();
+    let code = generated["code"].as_str().unwrap();
+    let invitation = f.db.resolve_activation(code, NOW).unwrap();
+    let (claim, _, _) = f.claim(invitation["token"].as_str().unwrap().into());
+    assert!(f.db.resolve_activation(code, NOW + 30).is_err());
+    assert!(f.db.claim(claim, NOW + 30).is_err());
+}
+
+#[test]
+fn v1_registry_migrates_without_losing_devices() {
+    let f = Fixture::new();
+    let path = f._dir.path().join("test.db");
+    drop(f.db);
+    let conn = rusqlite::Connection::open(&path).unwrap();
+    conn.execute_batch("DROP TRIGGER legacy_device_insert; DROP TRIGGER legacy_device_update; DROP TABLE legacy_peers; DROP TABLE activations; PRAGMA user_version=1;")
+        .unwrap();
+    drop(conn);
+    let mut db = Registry::open(path, f.server).unwrap();
+    assert_eq!(db.desired_peers().unwrap().peers.len(), 1);
+    db.generate_activation("https://vpn.example.org", 300, NOW)
+        .unwrap();
+    db.check().unwrap();
+}
+
+#[test]
+fn activation_canonicalizes_https_origin() {
+    let mut f = Fixture::new();
+    let generated =
+        f.db.generate_activation("https://VPN.example.org:443/", 300, NOW)
+            .unwrap();
+    assert_eq!(generated["origin"], "https://vpn.example.org");
+    assert_eq!(f.db.activation_origin().unwrap(), "https://vpn.example.org");
+}
+
+#[test]
+fn migration_preserves_legacy_peers_and_reserves_addresses() {
+    let mut f = Fixture::new();
+    let path = f._dir.path().join("migration.db");
+    let mut db = Registry::open(&path, f.server.clone()).unwrap();
+    let legacy = vec![
+        Peer {
+            public_key: crypto::wg_keypair().1,
+            slot: 2,
+        },
+        Peer {
+            public_key: crypto::wg_keypair().1,
+            slot: 3,
+        },
+    ];
+    db.bootstrap_with_existing(
+        &crypto::public(&f.owner),
+        &crypto::wg_keypair().1,
+        &crypto::wg_keypair().1,
+        "vpn.example.org:51820",
+        &legacy,
+    )
+    .unwrap();
+    db.check().unwrap();
+    assert_eq!(
+        db.owner_bundle("https://vpn.example.org", "https://admin.example.org")
+            .unwrap()
+            .payload["config"]["address"],
+        "10.77.0.4/32"
+    );
+    f.db = db;
+    let activation =
+        f.db.generate_activation("https://vpn.example.org", 300, NOW)
+            .unwrap();
+    let resolved =
+        f.db.resolve_activation(activation["code"].as_str().unwrap(), NOW)
+            .unwrap();
+    let (claim, _, _) = f.claim(resolved["token"].as_str().unwrap().into());
+    f.db.claim(claim, NOW).unwrap();
+    let peers = f.db.desired_peers().unwrap();
+    peers.validate().unwrap();
+    assert_eq!(peers.peers.len(), 4);
+    for peer in &legacy {
+        assert!(
+            peers
+                .peers
+                .iter()
+                .any(|p| p.public_key == peer.public_key && p.slot == peer.slot)
+        );
+    }
+    assert!(peers.peers.iter().any(|p| p.slot == 5));
+    // Recovery cannot replace the Owner key with a legacy key, and must roll back.
+    assert!(
+        f.db.recover(
+            &crypto::public(&crypto::signing_key()),
+            &legacy[0].public_key
+        )
+        .is_err()
+    );
+    f.db.check().unwrap();
+    let reopened = Registry::open(&path, f.server.clone()).unwrap();
+    reopened.check().unwrap();
+    assert_eq!(reopened.desired_peers().unwrap().peers.len(), 4);
+}
+
+#[test]
+fn migration_rejects_invalid_or_colliding_legacy_peers_atomically() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut db = Registry::open(dir.path().join("test.db"), crypto::signing_key()).unwrap();
+    let key = crypto::wg_keypair().1;
+    let owner = crypto::public(&crypto::signing_key());
+    let server = crypto::wg_keypair().1;
+    for peers in [
+        vec![Peer {
+            public_key: key.clone(),
+            slot: 65535,
+        }],
+        vec![Peer {
+            public_key: server.clone(),
+            slot: 2,
+        }],
+        vec![
+            Peer {
+                public_key: key.clone(),
+                slot: 2,
+            },
+            Peer {
+                public_key: key.clone(),
+                slot: 3,
+            },
+        ],
+        vec![Peer {
+            public_key: key.clone(),
+            slot: 251,
+        }],
+    ] {
+        assert!(
+            db.bootstrap_with_existing(
+                &owner,
+                &crypto::wg_keypair().1,
+                &server,
+                "vpn.example.org:51820",
+                &peers
+            )
+            .is_err()
+        );
+    }
+    db.bootstrap(
+        &owner,
+        &crypto::wg_keypair().1,
+        &server,
+        "vpn.example.org:51820",
+    )
+    .unwrap();
+    db.check().unwrap();
+}

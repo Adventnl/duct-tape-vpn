@@ -44,7 +44,7 @@ The exact host-specific commands cannot be finalized until the host inspection i
 - Produce `ductctl owner-bundle --database ... --identity ... --origin https://PUBLIC_HOST --admin-origin https://PRIVATE_ADMIN_HOST:9443` and import it on the same Owner MacBook through the trusted connection. It binds the Owner signing/WireGuard public keys and server identity. Never import an unsolicited self-signed bundle from an invitation.
 - Review enabling IPv4 forwarding against all host uses and preserve the exact old value. No script silently enables it. The network service refuses to start without it. It creates only its named interface and table; it tags both and verifies ownership before removal.
 - Merge the public enrollment ingress template into the inspected TLS arrangement. Keep the private admin ingress bound only to 10.77.0.1:9443, in a separately constrained identity with only admin-socket access. Use valid TLS hostname certificates and an explicit renewal plan. The generic templates do not provision a domain/certificate or replace an existing nginx installation.
-- Integrate only narrow UDP input, private DNS/admin and established forwarding permits in existing firewall policy. Apply the app-owned NAT/filter table after review. Public ingress allows only challenge/claim/poll and rate-limits per source. Never put public and private sockets behind the same unconstrained worker.
+- Integrate only narrow UDP input, private DNS/admin and established forwarding permits in existing firewall policy. Apply the app-owned NAT/filter table after review. Public ingress allows only activate/challenge/claim/poll and rate-limits per source. Never put public and private sockets behind the same unconstrained worker.
 - Enable/start only the five dtvpn units after `systemd-analyze verify`, `unbound-checkconf`, `nft -c` and local health checks pass. The constrained units are supplied but have not been executed under systemd on Ubuntu here.
 - Forward only the chosen WireGuard UDP/enrollment HTTPS ports in the router after external reachability/CGNAT review. Keep SSH and every unrelated rule unchanged. Run the complete remote acceptance matrix before calling the installation usable.
 
@@ -57,3 +57,43 @@ python3 deploy/dtvpn.py rollback --backup /YOUR/SAVED/BACKUP
 ```
 
 Rollback refuses to overwrite a file changed since staging. For an active deployment, first review `deploy/remove.sh` (without arguments it prints its removal plan); removal interrupts tunnels and requires explicit approval. It stops/disables only the five owned units, verifies the interface alias/table marker before removing network resources and preserves keys, databases, backups, packages and shared forwarding settings. Restore the staged-file backup, then separately remove only the router/TLS rules recorded at activation. Check all other services before restoring a previously changed forwarding value. Clean removal never means deleting shared packages, resetting nftables, altering SSH or erasing personal state without an explicit separate decision.
+
+## Migrating existing personal peers
+
+`ductctl bootstrap --existing-peers /PRIVATE/existing-peers.json` accepts a trusted
+snapshot array of `{ "public_key": "BASE64URL_WIREGUARD_PUBLIC_KEY", "slot": 2 }`.
+Capture only public keys and their exact canonical IPv4/IPv6 address slots from
+the inspected interface; never export WireGuard private keys. Bootstrap validates
+the combined peer set, retains these peers without granting administrative
+identities, and allocates the new Owner above their highest slot. New clients
+receive subsequent unused slots. The Owner bundle reflects its actual address.
+Duplicate keys, duplicate/out-of-range slots and server-key reuse are rejected.
+Legacy slots and keys are reserved against later device enrollment and recovery.
+
+Schema v3 stores legacy peers separately; older binaries refuse it. Keep a
+pre-migration backup. Tests in `crates/duct-core/tests/security.rs` cover retained
+peers, address allocation, Owner bundle addresses, invalid snapshots and recovery
+collisions. Administrative keys produced by `ductctl keys` are software keys in a
+private directory; this does not establish Secure Enclave protection.
+
+On an existing personal interface, retain its original network service/key and
+adapt helper/registry/DNS unit dependencies to that service. Do not start the stock
+`dtvpn-network` unit against it. DNS and NAT/forward rules must cover enrolled
+client addresses, not just the original two personal peers. Verify the registry's
+complete desired set before its first live reconciliation.
+
+Tailscale Funnel can provide enrollment HTTPS without a user-owned domain or
+router TCP forwarding. Use a separate supported HTTPS port from existing private
+Serve services, proxy only the restricted enrollment ingress, and retain the
+administration Unix socket's separation. Funnel carries enrollment HTTPS;
+WireGuard VPN traffic still uses the server's direct UDP endpoint. Validate the
+public route and certificate independently before issuing a user activation code.
+
+On Ubuntu with the distro Unbound AppArmor profile, place the dedicated config
+at `/etc/unbound/dtvpn.conf` (outside `unbound.conf.d`, so it is not included in
+the distro instance), and the writable trust-anchor state in
+`/var/lib/unbound/dtvpn`, owned by `dtvpn-dns`. Adapt the dedicated unit's
+`ExecStart` and `ReadWritePaths` accordingly. The stock profile permits these
+paths; disabling AppArmor is unnecessary. Unbound's interface discovery also
+requires `AF_NETLINK` in the dedicated unit's address-family allowlist. Confirmed
+with the live Ubuntu service: DNS resolution succeeded after these adaptations.

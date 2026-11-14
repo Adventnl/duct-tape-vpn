@@ -27,7 +27,7 @@ fn origin(s: &str) -> Result<String> {
             && u.fragment().is_none(),
         "invalid HTTPS origin"
     );
-    Ok(s.trim_end_matches('/').into())
+    Ok(u.origin().ascii_serialization())
 }
 fn post<T: Serialize, R: DeserializeOwned>(url: &str, v: &T) -> Result<R> {
     use std::io::Read;
@@ -44,10 +44,27 @@ fn verified(key: &str, domain: &str, r: Signed<Value>) -> Result<Value> {
 pub fn begin(v: &Value) -> Result<Value> {
     let link = field(v, "invitation")?;
     ensure!(link.len() < 4096, "invitation too long");
-    let i: Value = serde_json::from_slice(&crypto::decode(
-        link.strip_prefix("ducttape://pair#")
-            .context("invalid invitation")?,
-    )?)?;
+    let i: Value = if let Some(encoded) = link.strip_prefix("ducttape://activate#") {
+        let input: Value = serde_json::from_slice(&crypto::decode(encoded)?)?;
+        let base = origin(field(&input, "origin")?)?;
+        // Initial server identity comes from certificate-validated TLS to the
+        // operator's server address. All subsequent messages are key-pinned.
+        let invitation: Value = post(
+            &format!("{base}/v1/activate"),
+            &json!({"code":field(&input,"code")?}),
+        )?;
+        ensure!(
+            origin(field(&invitation, "origin")?)? == base,
+            "activation origin mismatch"
+        );
+        crypto::signing_public_valid(field(&invitation, "server_key")?)?;
+        invitation
+    } else {
+        serde_json::from_slice(&crypto::decode(
+            link.strip_prefix("ducttape://pair#")
+                .context("invalid invitation")?,
+        )?)?
+    };
     ensure!(
         i["expires_at"].as_i64().context("expiry required")? > now(),
         "expired invitation"

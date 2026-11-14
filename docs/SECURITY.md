@@ -1,6 +1,6 @@
 # Protocol and threat model
 
-The intended trust roots are the trusted Ubuntu console/SSH channel, the server signing public key deliberately imported through that channel, the Owner MacBook's separate P-256 administrative identity, platform TLS trust, and independent offline TUF root keys. An installer alone grants no access. Possession of an invitation grants an opportunity to request approval, never a VPN peer or Owner role.
+The intended trust roots are the trusted Ubuntu console/SSH channel, the server signing public key deliberately imported through that channel, the Owner MacBook's separate P-256 administrative identity, platform TLS trust, and independent offline TUF root keys. An installer alone grants no access. Possession of an Owner invitation grants an opportunity to request approval. A trusted-console activation code preauthorizes one ordinary VPN client; neither path grants an Owner role.
 
 ## Enrollment v1
 
@@ -14,6 +14,23 @@ The intended trust roots are the trusted Ubuntu console/SSH channel, the server 
 8. A nonce-bound device-signed poll obtains server-signed public configuration after reconciliation. It never returns the device private key. Endpoint changes retain the server signing/WireGuard identity and require no reenrollment. Automatic out-of-tunnel endpoint discovery is not implemented; deliberate refresh/import is required when the old endpoint is unreachable.
 
 WireGuard keys use unpadded base64url in the application protocol and canonical padded base64 only at WireGuard tooling boundaries. P-256 public keys are canonical uncompressed SEC1; signatures are 64-byte IEEE-P1363 r||s. Signed messages are UTF-8 `duct-tape/<domain>/v1\n` followed by JSON with recursively sorted object keys and compact serialization. Protocol fields use integer timestamps and bounded strings; no floating-point fields are signed. This is a specified v1 encoding, not an assertion of general-purpose RFC 8785 canonicalization. TLS still validates normally; application identity pinning supplements it.
+
+## Server-issued activation
+
+`ductctl generate` (also packaged as `dvpn generate`) runs on the trusted server
+console. It creates an 80-bit random, five-minute, single-use code. Only hashes
+persist in the registry. `/v1/activate` resolves a previously issued code over
+certificate-validated HTTPS and cannot create codes. Because the short code has
+no signing-key pin, the user-entered HTTPS origin and platform/WebPKI TLS trust
+establish the first server identity; subsequent challenge, claim and poll messages
+pin its signing key. The code must be transferred privately.
+
+The usual dual-key possession challenge still applies. A successful claim of an
+activation invitation atomically consumes it, allocates an address and authorizes
+a Client. Configuration is withheld until the helper applies that revision.
+Legacy Owner invitations still create pending clients requiring fingerprint
+approval. Recovery cancels both kinds of invitation; revocation works for both.
+No public API can issue codes or promote an ordinary client.
 
 ## Owner and recovery
 

@@ -27,7 +27,15 @@ class VpnController extends ChangeNotifier {
     _reading = true;
     final generation = _requestGeneration;
     try {
-      final snapshot = await port.snapshot();
+      var snapshot = await port.snapshot();
+      if (!snapshot.paired && snapshot.enrollment == 'pending') {
+        try {
+          await port.refreshEnrollment();
+          snapshot = await port.snapshot();
+        } catch (_) {
+          // A temporarily unreachable server must not discard a saved claim.
+        }
+      }
       if (_disposed || generation != _requestGeneration) return;
       state = snapshot;
       final now = _now();

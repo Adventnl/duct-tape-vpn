@@ -17,6 +17,17 @@ struct Args {
 }
 #[derive(Subcommand)]
 enum Commands {
+    /// Issue a one-use activation code from the trusted server console.
+    Generate {
+        #[arg(long, default_value = "/var/lib/dtvpn/registry.db")]
+        database: PathBuf,
+        #[arg(long, default_value = "/var/lib/dtvpn/server.key")]
+        identity: PathBuf,
+        #[arg(long)]
+        origin: Option<String>,
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: i64,
+    },
     Keys {
         #[arg(long)]
         directory: PathBuf,
@@ -32,6 +43,9 @@ enum Commands {
         server_wireguard: String,
         #[arg(long)]
         endpoint: String,
+        /// Trusted snapshot of existing public WireGuard keys and address slots.
+        #[arg(long)]
+        existing_peers: Option<PathBuf>,
     },
     OwnerBundle {
         #[arg(long)]
@@ -219,6 +233,26 @@ fn passphrase(file: &Path) -> Result<age::secrecy::SecretString> {
 #[tokio::main]
 async fn main() -> Result<()> {
     match Args::parse().command {
+        Commands::Generate {
+            database,
+            identity,
+            origin,
+            ttl_seconds,
+        } => {
+            let mut registry = Registry::open(database, load_key(&identity)?)?;
+            let origin = match origin {
+                Some(origin) => origin,
+                None => registry.activation_origin()?,
+            };
+            origin_valid(&origin)?;
+            let result = registry.generate_activation(&origin, ttl_seconds, now())?;
+            println!(
+                "Server: {}\nActivation code: {}\nExpires in {} seconds. One device only. Share privately.",
+                result["origin"].as_str().context("origin")?,
+                result["code"].as_str().context("code")?,
+                ttl_seconds
+            );
+        }
         Commands::Keys { directory } => {
             private_dir(&directory)?;
             let public = new_keys(&directory)?;
@@ -230,16 +264,22 @@ async fn main() -> Result<()> {
             owner_public,
             server_wireguard,
             endpoint,
+            existing_peers,
         } => {
+            let existing: Vec<duct_core::helper::Peer> = match existing_peers {
+                Some(path) => serde_json::from_slice(&std::fs::read(path)?)?,
+                None => Vec::new(),
+            };
             let key = crypto::signing_key();
             create_private(&identity, key.to_bytes().as_slice())?;
             let owner: PublicKeys = serde_json::from_slice(&std::fs::read(owner_public)?)?;
             let mut r = Registry::open(database, key)?;
-            r.bootstrap(
+            r.bootstrap_with_existing(
                 &owner.signing_key,
                 &owner.wireguard_key,
                 &server_wireguard,
                 &endpoint,
+                &existing,
             )?;
             println!(
                 "server_id={} server_key={}",

@@ -4,7 +4,7 @@ import base64, ctypes, json, os, pathlib, subprocess, tempfile, time, urllib.req
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 BIN=ROOT/'target/release'
 if not (BIN/'ductctl').exists(): BIN=ROOT/'target/debug'
-lib=ctypes.CDLL(str(BIN/('libduct_bridge.so')))
+lib=ctypes.CDLL(str(BIN / ('libduct_bridge.dylib' if __import__('sys').platform == 'darwin' else 'libduct_bridge.so')))
 lib.duct_call.argtypes=[ctypes.c_char_p];lib.duct_call.restype=ctypes.c_void_p;lib.duct_free.argtypes=[ctypes.c_void_p]
 def core(v):
     p=lib.duct_call(json.dumps(v).encode())
@@ -65,6 +65,20 @@ with tempfile.TemporaryDirectory(prefix='dtvpn-smoke-') as temp:
         check('unavailable helper prevents ready/configuration claim',r['payload']['result']['status']=='provisioning')
         admin({'type':'revoke','id':answer['claim']['id']})
         check('revocation persists in authenticated registry',any(x['status']=='revoked' for x in admin({'type':'list'})['devices']))
+        generated=command('generate','--database',d/'registry.db','--identity',d/'server.key','--origin','https://vpn.example.org')
+        code=generated.split('Activation code: ')[1].splitlines()[0]
+        activation=post(port,'/v1/activate',{'code':code})
+        check('console-generated code resolves through public gateway',activation['server_key']==server_key)
+        keys=core({'op':'keys'})
+        enrollment.update(invitation=activation['token'], signing_key=keys['signing_key'], wireguard_key=keys['wireguard_key'])
+        challenge=post(port,'/v1/challenge',enrollment)
+        answer=core({'op':'answer','challenge':challenge,'enrollment':enrollment,'server_key':server_key,'wireguard_private':keys['wireguard_private'],'signing_private':keys['signing_private'],'now':int(time.time())})
+        post(port,'/v1/claim',answer['claim'])
+        check('activation authorizes ordinary client without another approval',any(x['id']==answer['claim']['id'] and x['status']=='active' and x['role']=='client' for x in admin({'type':'list'})['devices']))
+        try:post(port,'/v1/activate',{'code':code})
+        except urllib.error.HTTPError as e:check('activation cannot be redeemed twice',e.code==400)
+        else:raise AssertionError('activation reused')
+        check('generate remembers server origin', 'Server: https://vpn.example.org' in command('generate','--database',d/'registry.db','--identity',d/'server.key'))
         (d/'pass').write_text('temporary fixture passphrase with strong random '+b64(os.urandom(24)))
         os.chmod(d/'pass',0o600)
         command('backup','--database',d/'registry.db','--identity',d/'server.key','--passphrase-file',d/'pass','--output',d/'backup.age')

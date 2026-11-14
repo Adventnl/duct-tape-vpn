@@ -67,6 +67,7 @@ async fn main() -> anyhow::Result<()> {
         permits: tokio::sync::Semaphore::new(32),
     });
     let app = Router::new()
+        .route("/v1/activate", post(forward))
         .route("/v1/challenge", post(forward))
         .route("/v1/claim", post(forward))
         .route("/v1/poll", post(forward))

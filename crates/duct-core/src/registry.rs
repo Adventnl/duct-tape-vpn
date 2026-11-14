@@ -28,9 +28,26 @@ impl Registry {
             "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;",
         )?;
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        ensure!(version <= 1, "database is from a newer server");
+        ensure!(version <= 3, "database is from a newer server");
         if version == 0 {
             conn.execute_batch(include_str!("schema.sql"))?;
+        }
+        if version < 2 {
+            conn.execute_batch(
+                "BEGIN IMMEDIATE;
+                CREATE TABLE IF NOT EXISTS activations(
+                    token_hash TEXT PRIMARY KEY REFERENCES invitations(token_hash),
+                    origin TEXT NOT NULL
+                ) STRICT;
+                PRAGMA user_version=2; COMMIT;",
+            )?;
+        }
+        if version < 3 {
+            conn.execute_batch("BEGIN IMMEDIATE;
+                CREATE TABLE legacy_peers(wg_key TEXT PRIMARY KEY, slot INTEGER NOT NULL UNIQUE CHECK(slot BETWEEN 2 AND 251)) STRICT;
+                CREATE TRIGGER legacy_device_insert BEFORE INSERT ON devices WHEN EXISTS(SELECT 1 FROM legacy_peers WHERE wg_key=NEW.wg_key OR slot=NEW.slot) BEGIN SELECT RAISE(ABORT,'reserved legacy peer'); END;
+                CREATE TRIGGER legacy_device_update BEFORE UPDATE OF wg_key,slot ON devices WHEN EXISTS(SELECT 1 FROM legacy_peers WHERE wg_key=NEW.wg_key OR slot=NEW.slot) BEGIN SELECT RAISE(ABORT,'reserved legacy peer'); END;
+                PRAGMA user_version=3; COMMIT;")?;
         }
         Ok(Self { conn, identity })
     }
@@ -44,6 +61,37 @@ impl Registry {
         server_wg: &str,
         endpoint: &str,
     ) -> Result<()> {
+        self.bootstrap_with_existing(owner_signing, owner_wg, server_wg, endpoint, &[])
+    }
+    /// Trusted-console migration: retain existing WireGuard peers without granting them administration.
+    pub fn bootstrap_with_existing(
+        &mut self,
+        owner_signing: &str,
+        owner_wg: &str,
+        server_wg: &str,
+        endpoint: &str,
+        existing: &[Peer],
+    ) -> Result<()> {
+        PeerSet {
+            revision: 1,
+            peers: existing.to_vec(),
+        }
+        .validate()?;
+        let owner_slot = existing.iter().map(|p| p.slot).max().map_or(2, |s| s + 1);
+        let mut all = existing.to_vec();
+        all.push(Peer {
+            public_key: owner_wg.into(),
+            slot: owner_slot,
+        });
+        PeerSet {
+            revision: 1,
+            peers: all,
+        }
+        .validate()?;
+        ensure!(
+            existing.iter().all(|p| p.public_key != server_wg),
+            "reserved server key"
+        );
         crypto::signing_public_valid(owner_signing)?;
         crypto::wg_public_valid(owner_wg)?;
         crypto::wg_public_valid(server_wg)?;
@@ -64,7 +112,13 @@ impl Registry {
         ] {
             tx.execute("INSERT INTO settings VALUES (?1,?2)", params![k, v])?;
         }
-        tx.execute("INSERT INTO devices(id,name,platform,signing_key,wg_key,status,slot,revision,fingerprint,role) VALUES ('owner','Owner MacBook','macos',?1,?2,'active',2,1,'bootstrap','owner')",params![owner_signing,owner_wg])?;
+        for peer in existing {
+            tx.execute(
+                "INSERT INTO legacy_peers VALUES (?1,?2)",
+                params![peer.public_key, peer.slot],
+            )?;
+        }
+        tx.execute("INSERT INTO devices(id,name,platform,signing_key,wg_key,status,slot,revision,fingerprint,role) VALUES ('owner','Owner MacBook','macos',?1,?2,'active',?3,1,'bootstrap','owner')",params![owner_signing,owner_wg,owner_slot])?;
         tx.commit()?;
         Ok(())
     }
@@ -74,6 +128,83 @@ impl Registry {
             .query_row("SELECT value FROM settings WHERE key=?1", [key], |r| {
                 r.get(0)
             })?)
+    }
+    /// Trusted server console only. Possession of this one-use code authorizes
+    /// one ordinary client; it never grants Owner or administrative access.
+    pub fn generate_activation(&mut self, origin: &str, ttl: i64, now: i64) -> Result<Value> {
+        let u = url::Url::parse(origin)?;
+        ensure!(
+            u.scheme() == "https"
+                && u.host_str().is_some()
+                && u.username().is_empty()
+                && u.password().is_none()
+                && u.path() == "/"
+                && u.query().is_none()
+                && u.fragment().is_none(),
+            "HTTPS origin required"
+        );
+        ensure!(
+            (30..=900).contains(&ttl),
+            "activation TTL must be 30..900 seconds"
+        );
+        ensure!(
+            self.get("server_id")? == self.server_id(),
+            "wrong server identity"
+        );
+        let origin = u.origin().ascii_serialization();
+        // 80 random bits, rather than a guessable six-digit PIN. Only hashes persist.
+        let random = crypto::decode(&crypto::random())?;
+        let code = random[..10]
+            .iter()
+            .map(|b| format!("{b:02X}"))
+            .collect::<String>();
+        let token = activation_token(&code)?;
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute(
+            "UPDATE invitations SET state='expired' WHERE expires_at<=?1 AND state='open'",
+            [now],
+        )?;
+        let count: i64 = tx.query_row(
+            "SELECT count(*) FROM invitations WHERE state='open'",
+            [],
+            |r| r.get(0),
+        )?;
+        ensure!(count < 128, "invitation limit");
+        tx.execute(
+            "INSERT INTO invitations VALUES (?1,?2,?3,'open')",
+            params![crypto::random(), crypto::hash(&token), now + ttl],
+        )?;
+        tx.execute(
+            "INSERT INTO activations VALUES (?1,?2)",
+            params![crypto::hash(&token), origin.trim_end_matches('/')],
+        )?;
+        tx.execute("INSERT INTO settings VALUES ('activation_origin',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [origin.trim_end_matches('/')])?;
+        tx.commit()?;
+        let grouped = code
+            .as_bytes()
+            .chunks(4)
+            .map(|b| std::str::from_utf8(b).expect("hex"))
+            .collect::<Vec<_>>()
+            .join("-");
+        Ok(json!({"code":grouped,"origin":origin.trim_end_matches('/'),"expires_at":now+ttl}))
+    }
+    pub fn activation_origin(&self) -> Result<String> {
+        self.get("activation_origin")
+            .context("First run: dvpn generate --origin https://YOUR-SERVER")
+    }
+    pub fn resolve_activation(&self, code: &str, now: i64) -> Result<Value> {
+        let token = activation_token(code)?;
+        let (origin, expires_at): (String, i64) = self.conn.query_row(
+            "SELECT a.origin,i.expires_at FROM activations a JOIN invitations i USING(token_hash)
+             WHERE i.token_hash=?1 AND i.state='open' AND i.expires_at>?2",
+            params![crypto::hash(&token), now],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
+        Ok(
+            json!({"origin":origin,"server_key":crypto::public(&self.identity),"token":token,"expires_at":expires_at}),
+        )
     }
     pub fn challenge(&mut self, mut req: Enrollment, now: i64) -> Result<Signed<Challenge>> {
         ensure!(
@@ -171,6 +302,24 @@ impl Registry {
         let n=tx.execute("UPDATE invitations SET state='claimed' WHERE token_hash=?1 AND state='open' AND expires_at>?2",params![enrollment.invitation,now])?;
         ensure!(n == 1, "invitation already claimed");
         tx.execute("INSERT INTO devices(id,name,platform,signing_key,wg_key,status,fingerprint,role) VALUES (?1,?2,?3,?4,?5,'pending',?6,'client')",params![req.id,enrollment.name,serde_json::to_value(enrollment.platform)?.as_str(),enrollment.signing_key,enrollment.wireguard_key,row.2])?;
+        let activation: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM activations WHERE token_hash=?1)",
+            [&enrollment.invitation],
+            |r| r.get(0),
+        )?;
+        if activation {
+            let slot: i64 =
+                tx.query_row("SELECT coalesce(max(slot),2)+1 FROM (SELECT slot FROM devices UNION ALL SELECT slot FROM legacy_peers)", [], |r| {
+                    r.get(0)
+                })?;
+            ensure!(slot <= 251, "address pool full");
+            tx.execute(
+                "UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='revision'",
+                [],
+            )?;
+            tx.execute("UPDATE devices SET status='active',slot=?2,revision=(SELECT CAST(value AS INTEGER) FROM settings WHERE key='revision') WHERE id=?1", params![req.id,slot])?;
+        }
+
         tx.execute(
             "DELETE FROM challenges WHERE invitation_hash=?1",
             [enrollment.invitation],
@@ -246,7 +395,7 @@ impl Registry {
                 let f:String=tx.query_row("SELECT fingerprint FROM devices WHERE id=?1 AND status='pending' AND role='client'",[id],|r|r.get(0))?;
                 ensure!(crypto::constant_eq(&f, fingerprint), "fingerprint mismatch");
                 let slot: i64 =
-                    tx.query_row("SELECT coalesce(max(slot),2)+1 FROM devices", [], |r| {
+                    tx.query_row("SELECT coalesce(max(slot),2)+1 FROM (SELECT slot FROM devices UNION ALL SELECT slot FROM legacy_peers)", [], |r| {
                         r.get(0)
                     })?;
                 ensure!(slot <= 251, "address pool full");
@@ -394,21 +543,21 @@ impl Registry {
                 "invalid HTTPS origin"
             );
         }
-        let (wg, owner): (String, String) = self.conn.query_row(
-            "SELECT wg_key,signing_key FROM devices WHERE role='owner' AND status='active'",
+        let (wg, owner, slot): (String, String, u16) = self.conn.query_row(
+            "SELECT wg_key,signing_key,slot FROM devices WHERE role='owner' AND status='active'",
             [],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )?;
         signed(
             "owner-bootstrap",
-            json!({"session":{"origin":origin,"admin_origin":admin_origin,"server_key":crypto::public(&self.identity),"id":"owner"},"owner_signing_key":owner,"device_wireguard_key":wg,"config":PeerConfig{device_id:"owner".into(),server_id:self.server_id(),server_signing_key:crypto::public(&self.identity),server_wireguard_key:self.get("server_wg")?,address:"10.77.0.2/32".into(),address_v6:"fd77:6474:7670::2/128".into(),dns:"10.77.0.1".into(),endpoint:self.get("endpoint")?,mtu:1280,revision:self.get("revision")?.parse()?}}),
+            json!({"session":{"origin":origin,"admin_origin":admin_origin,"server_key":crypto::public(&self.identity),"id":"owner"},"owner_signing_key":owner,"device_wireguard_key":wg,"config":PeerConfig{device_id:"owner".into(),server_id:self.server_id(),server_signing_key:crypto::public(&self.identity),server_wireguard_key:self.get("server_wg")?,address:format!("10.77.0.{slot}/32"),address_v6:format!("fd77:6474:7670::{slot:x}/128"),dns:"10.77.0.1".into(),endpoint:self.get("endpoint")?,mtu:1280,revision:self.get("revision")?.parse()?}}),
             &self.identity,
         )
     }
     pub fn desired_peers(&self) -> Result<PeerSet> {
         let mut stmt = self
             .conn
-            .prepare("SELECT wg_key,slot FROM devices WHERE status='active'")?;
+            .prepare("SELECT wg_key,slot FROM devices WHERE status='active' UNION ALL SELECT wg_key,slot FROM legacy_peers")?;
         let peers = stmt
             .query_map([], |r| {
                 Ok(Peer {
@@ -479,4 +628,20 @@ impl Registry {
         self.desired_peers()?.validate()?;
         Ok(())
     }
+}
+
+fn activation_token(code: &str) -> Result<String> {
+    ensure!(code.len() <= 64, "invalid activation code");
+    let normalized: String = code
+        .chars()
+        .filter(|c| *c != '-' && !c.is_ascii_whitespace())
+        .map(|c| c.to_ascii_uppercase())
+        .collect();
+    ensure!(
+        normalized.len() == 20 && normalized.bytes().all(|b| b.is_ascii_hexdigit()),
+        "invalid activation code"
+    );
+    Ok(crypto::hash(format!(
+        "duct-tape/activation/v1:{normalized}"
+    )))
 }

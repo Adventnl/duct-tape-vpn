@@ -35,6 +35,17 @@ async fn execute<T: serde::Serialize + Send + 'static>(
     .await
     .map_err(|_| Error)?
 }
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Activation {
+    code: String,
+}
+async fn activate(
+    State(app): State<App>,
+    Json(req): Json<Activation>,
+) -> Result<Json<serde_json::Value>, Error> {
+    execute(app, move |r| r.resolve_activation(&req.code, now())).await
+}
 async fn challenge(
     State(app): State<App>,
     Json(req): Json<Enrollment>,
@@ -65,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
     let config = duct_server::read_config(&Args::parse().config)?;
     let app = App::open(config.database, config.identity)?;
     let public = Router::new()
+        .route("/v1/activate", post(activate))
         .route("/v1/challenge", post(challenge))
         .route("/v1/claim", post(claim))
         .route("/v1/poll", post(poll))

@@ -12,6 +12,7 @@ mkdir -p "$scratch/duct-tape-vpn-$version/bin"
 for name in ductctl duct-registry duct-gateway duct-helper duct-update; do
  install -m 0755 "target/release/$name" "$scratch/duct-tape-vpn-$version/bin/$name"
 done
+ln -s ductctl "$scratch/duct-tape-vpn-$version/bin/dvpn"
 cp -R artifacts/rust-licenses "$scratch/duct-tape-vpn-$version/"
 cp -R deploy docs licenses LICENSE THIRD_PARTY_NOTICES.md "$scratch/duct-tape-vpn-$version/"
 tar --exclude=__pycache__ -C "$scratch" -czf "dist/duct-tape-vpn-$version-linux-x86_64-unsigned.tar.gz" "duct-tape-vpn-$version"

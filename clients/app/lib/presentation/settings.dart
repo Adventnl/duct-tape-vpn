@@ -6,23 +6,29 @@ import 'package:material_ui/material_ui.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../application/vpn_controller.dart';
+import '../infrastructure/activation.dart';
 import 'components.dart';
 
 class Settings extends StatefulWidget {
-  const Settings({super.key, required this.controller});
+  const Settings({
+    super.key,
+    required this.controller,
+    this.activationOrigin = configuredActivationOrigin,
+  });
   final VpnController controller;
+  final String activationOrigin;
   @override
   State<Settings> createState() => _SettingsState();
 }
 
 class _SettingsState extends State<Settings> {
-  final link = TextEditingController(),
-      name = TextEditingController(),
+  final server = TextEditingController(),
+      link = TextEditingController(),
       endpoint = TextEditingController(),
       releaseHash = TextEditingController(),
       releaseVersion = TextEditingController();
   String? message, fingerprint, invitation, ownerPublic;
-  bool working = false;
+  bool working = false, useInvitation = false;
   List<Map<Object?, Object?>> devices = [];
 
   Future<void> perform(Future<void> Function() task) async {
@@ -36,13 +42,50 @@ class _SettingsState extends State<Settings> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => message = 'Could not complete the request. Check the invitation, server access and native service, then try again.',
+          () => message = widget.activationOrigin.isNotEmpty && !useInvitation
+              ? 'Could not activate this device. Check your internet connection and try a fresh activation code.'
+              : 'Could not complete the request. Check the code or invitation and your server address, then try again.',
         );
       }
     } finally {
       await widget.controller.refresh();
       if (mounted) setState(() => working = false);
     }
+  }
+
+  Future<void> activateDevice() async {
+    String input;
+    try {
+      input = useInvitation
+          ? link.text.trim()
+          : activationInvitation(
+              widget.activationOrigin.isNotEmpty
+                  ? widget.activationOrigin
+                  : server.text,
+              link.text,
+            );
+      if (input.isEmpty) {
+        throw const FormatException('Paste your invitation link.');
+      }
+    } on FormatException catch (error) {
+      setState(() => message = error.message);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    final result = await widget.controller.port.pair(
+      input,
+      defaultTargetPlatform == TargetPlatform.android
+          ? 'Android phone'
+          : 'Personal device',
+    );
+    if (!mounted) return;
+    link.clear();
+    setState(() {
+      fingerprint = result['fingerprint'] as String?;
+      message = useInvitation
+          ? 'Waiting for Owner approval. Compare the fingerprint on both devices.'
+          : 'Activation accepted. Saving your connection…';
+    });
   }
 
   Future<void> admin(Map<String, Object?> operation) async {
@@ -65,21 +108,27 @@ class _SettingsState extends State<Settings> {
     String text,
     Future<void> Function() task, {
     bool destructive = false,
-  }) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton(
-        style: destructive
-            ? TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-              )
-            : null,
-        onPressed: working ? null : () => perform(task),
-        child: Text(text),
+    bool primary = false,
+  }) {
+    final callback = working ? null : () => perform(task);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: primary
+            ? FilledButton(onPressed: callback, child: Text(text))
+            : TextButton(
+                style: destructive
+                    ? TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      )
+                    : null,
+                onPressed: callback,
+                child: Text(text),
+              ),
       ),
-    ),
-  );
+    );
+  }
 
   Future<void> rename(Map<Object?, Object?> device) async {
     final edit = TextEditingController(text: device['name'] as String? ?? '');
@@ -120,8 +169,8 @@ class _SettingsState extends State<Settings> {
 
   @override
   void dispose() {
+    server.dispose();
     link.dispose();
-    name.dispose();
     endpoint.dispose();
     releaseHash.dispose();
     releaseVersion.dispose();
@@ -177,7 +226,9 @@ class _SettingsState extends State<Settings> {
                       child: Semantics(
                         liveRegion: true,
                         child: Text(
-                          message!,
+                          state.paired && message == 'Activation accepted. Saving your connection…'
+                              ? 'Device activated.'
+                              : message!,
                           style: const TextStyle(fontSize: 15),
                         ),
                       ),
@@ -242,41 +293,39 @@ class _SettingsState extends State<Settings> {
                       ownerPublic == null &&
                       state.enrollment != 'pending')
                     SettingsGroup(
-                      title: 'Pair with home',
-                      footer: 'Paste the invitation from your Owner MacBook. Your private keys stay on this device.',
+                      title: 'Activate this device',
+                      footer: 'Enter the code from your server. Each code works once. Your connection stays saved.',
                       children: [
-                        GroupField(
-                          controller: name,
-                          label: 'Device name',
-                          maxLength: 80,
-                        ),
+                        if (!useInvitation && widget.activationOrigin.isEmpty)
+                          GroupField(
+                            controller: server,
+                            label: 'Server address',
+                            maxLength: 253,
+                          ),
                         GroupField(
                           controller: link,
-                          label: 'Invitation link',
-                          maxLines: 3,
+                          label: useInvitation
+                              ? 'Invitation link'
+                              : 'Activation code',
+                          maxLines: useInvitation ? 3 : 1,
                           maxLength: 4096,
+                          enabled: !working,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => perform(activateDevice),
                         ),
-                        action('Request pairing', () async {
-                          if (link.text.trim().isEmpty ||
-                              name.text.trim().isEmpty) {
-                            setState(
-                              () => message =
-                                  'Enter a device name and invitation link.',
-                            );
-                            return;
-                          }
-                          final result = await widget.controller.port.pair(
-                            link.text.trim(),
-                            name.text.trim(),
-                          );
-                          link.clear();
-                          if (mounted) {
-                            setState(() {
-                              fingerprint = result['fingerprint'] as String?;
-                              message = 'Waiting for Owner approval. Compare the fingerprint on both devices.';
-                            });
-                          }
-                        }),
+                        if (widget.activationOrigin.isEmpty)
+                          action(
+                            useInvitation
+                                ? 'Use an activation code'
+                                : 'Use an invitation link',
+                            () async {
+                              setState(() {
+                                useInvitation = !useInvitation;
+                                link.clear();
+                              });
+                            },
+                          ),
+                        action('Activate device', activateDevice, primary: true),
                       ],
                     ),
                   if (!state.paired &&
@@ -284,7 +333,7 @@ class _SettingsState extends State<Settings> {
                       displayedFingerprint.isNotEmpty)
                     SettingsGroup(
                       title: 'Device approval',
-                      footer: 'Approve only when this fingerprint matches the one on your Owner device.',
+                      footer: 'Server activation codes authorize this device automatically. Owner invitations need fingerprint approval.',
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(16),
@@ -299,6 +348,17 @@ class _SettingsState extends State<Settings> {
                             );
                           }
                         }),
+                      ],
+                    ),
+                  if (state.paired && !state.owner)
+                    const SettingsGroup(
+                      title: 'Connection saved',
+                      footer: 'Return to VPN and tap Connect. You only need a code when adding a new device.',
+                      children: [
+                        SettingsRow(
+                          title: 'This device is activated',
+                          icon: CupertinoIcons.check_mark_circled,
+                        ),
                       ],
                     ),
                   if (state.owner) ...[

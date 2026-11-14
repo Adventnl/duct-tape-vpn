@@ -180,17 +180,26 @@ class GroupField extends StatelessWidget {
     this.maxLines = 1,
     this.maxLength,
     this.numeric = false,
+    this.enabled = true,
+    this.textInputAction,
+    this.onSubmitted,
   });
   final TextEditingController controller;
   final String label;
   final int maxLines;
   final int? maxLength;
   final bool numeric;
+  final bool enabled;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
     child: TextField(
       controller: controller,
+      enabled: enabled,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       maxLines: maxLines,
       maxLength: maxLength,
       autocorrect: false,

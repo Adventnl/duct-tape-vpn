@@ -31,6 +31,10 @@ def main():
     (RUNTIME / 'bin').mkdir(parents=True)
     (RUNTIME / 'lib').mkdir()
     source = REPO / 'clients/native/macos-personal'
+    run('/usr/bin/swiftc', '-swift-version', '5', '-o', OUT / 'connection-tests',
+        source / 'ConnectionState.swift', source / 'tests/ConnectionStateTests.swift')
+    print(run(OUT / 'connection-tests').strip())
+    (OUT / 'connection-tests').unlink()
     run('/usr/bin/swiftc', '-swift-version', '5', '-O', '-o', RUNTIME / 'duct-helper', source / 'Helper.swift')
     # Assertions stay enabled in this validation-only build.
     run('/usr/bin/swiftc', '-swift-version', '5', '-o', OUT / 'helper-tests', source / 'Helper.swift')
@@ -39,15 +43,18 @@ def main():
     contents = APP / 'Contents'
     (contents / 'MacOS').mkdir(parents=True)
     (contents / 'Resources').mkdir()
-    run('/usr/bin/swiftc', '-swift-version', '5', '-O', '-o', contents / 'MacOS/DuctTape', source / 'App.swift')
+    run('/usr/bin/swiftc', '-swift-version', '5', '-O', '-o', contents / 'MacOS/DuctTape',
+        source / 'ConnectionState.swift', source / 'App.swift')
     (contents / 'Info.plist').write_bytes(plistlib.dumps({
         'CFBundleExecutable': 'DuctTape', 'CFBundleIdentifier': 'dev.ducttape.personal',
         'CFBundleName': 'Duct-Tape VPN', 'CFBundleDisplayName': 'Duct-Tape VPN',
+        'CFBundleIconFile': 'DuctTape',
         'CFBundlePackageType': 'APPL', 'CFBundleShortVersionString': '0.1.0',
         'CFBundleVersion': '1', 'LSMinimumSystemVersion': '14.0',
         'NSHighResolutionCapable': True,
         'NSHumanReadableCopyright': 'Duct-Tape VPN — personal development build',
     }))
+    shutil.copy2(REPO / 'clients/assets/DuctTape.icns', contents / 'Resources/DuctTape.icns')
     prefix = Path(run('/opt/homebrew/bin/brew', '--prefix').strip())
     for name in ('bash', 'wg', 'wireguard-go', 'wg-quick'):
         shutil.copy2(prefix / 'bin' / name, RUNTIME / 'bin' / name)

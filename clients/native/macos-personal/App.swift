@@ -2,29 +2,23 @@ import AppKit
 import SwiftUI
 
 final class Connection: ObservableObject {
-    @Published var phase = "off"
-    @Published var detail = "Connect directly to your home server."
-    @Published var endpoint = ""
-    @Published var exitIP = ""
-    @Published var desired = false
-    @Published var busy = false
+    @Published private(set) var state = ConnectionState()
+    var phase: String { state.phase }
+    var detail: String { state.detail }
+    var endpoint: String { state.endpoint }
+    var exitIP: String { state.exitIP }
+    var desired: Bool { state.desired }
+    var busy: Bool { state.busy }
     private var timer: Timer?
     init() { refresh(); timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() } }
     func refresh() {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: "/var/db/duct-tape-vpn/status.json")),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let checked = json["checkedAt"] as? Double, Date().timeIntervalSince1970 - checked < 30 else {
-            phase = "unavailable"; detail = "The VPN helper is unavailable. Complete installation or reopen Duct-Tape."; return
-        }
-        phase = json["phase"] as? String ?? "off"; detail = json["detail"] as? String ?? ""
-        endpoint = json["endpoint"] as? String ?? ""; exitIP = json["exitIP"] as? String ?? ""
-        desired = json["desired"] as? Bool ?? false
+        let snapshot = (try? Data(contentsOf: URL(fileURLWithPath: "/var/db/duct-tape-vpn/status.json")))
+            .flatMap { try? JSONDecoder().decode(HelperSnapshot.self, from: $0) }
+        state.refresh(snapshot, at: Date())
     }
     func toggle() {
-        guard !busy else { return }; busy = true
-        let action = desired ? "disconnect" : "connect"
-        phase = desired ? "disconnecting" : "connecting"
-        detail = desired ? "Restoring ordinary routing…" : "Contacting your server directly…"
+        guard let on = state.beginToggle(at: Date()) else { return }
+        let action = on ? "connect" : "disconnect"
         DispatchQueue.global().async {
             let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
             p.arguments = ["-n", "/Library/PrivilegedHelperTools/dev.ducttape.personal/duct-helper", action]
@@ -32,14 +26,12 @@ final class Connection: ObservableObject {
             var success = false
             do { try p.run(); p.waitUntilExit(); success = p.terminationStatus == 0 } catch {}
             DispatchQueue.main.async {
-                self.busy = false
-                if success { self.desired = action == "connect" } else { self.phase = "error"; self.detail = "The helper could not accept the request. Run the installer again." }
+                self.state.finishRequest(succeeded: success)
+                if success { self.refresh() }
             }
         }
     }
-    var title: String {
-        switch phase { case "connected": return "Connected"; case "connecting": return "Connecting"; case "disconnecting": return "Disconnecting"; case "retrying": return "Reconnecting"; default: return "Not connected" }
-    }
+    var title: String { state.title }
 }
 
 struct ContentView: View {
@@ -52,8 +44,14 @@ struct ContentView: View {
                     Text("Your server. Your connection.").font(.body).foregroundStyle(.secondary)
                 }
                 VStack(spacing: 18) {
-                    Image(systemName: "power").font(.system(size: 48, weight: .light))
-                        .foregroundStyle(connection.phase == "connected" ? Color.accentColor : Color.secondary)
+                    ZStack {
+                        if connection.state.working {
+                            ProgressView().progressViewStyle(.circular).controlSize(.large)
+                        } else {
+                            Image(systemName: "power").font(.system(size: 48, weight: .light))
+                                .foregroundStyle(connection.phase == "connected" ? Color.accentColor : Color.secondary)
+                        }
+                    }
                         .frame(width: 120, height: 120)
                         .background(Circle().fill(connection.phase == "connected" ? Color.accentColor.opacity(0.09) : Color.secondary.opacity(0.06)))
                         .accessibilityHidden(true)
@@ -106,8 +104,13 @@ final class Delegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { show(); return true }
 }
-let app = NSApplication.shared
-let delegate = Delegate()
-app.delegate = delegate
-app.setActivationPolicy(.regular)
-app.run()
+@main
+enum DuctTape {
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = Delegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.regular)
+        app.run()
+    }
+}

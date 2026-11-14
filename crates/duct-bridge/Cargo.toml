@@ -12,6 +12,6 @@ serde.workspace = true
 p256.workspace = true
 anyhow.workspace = true
 zeroize = "1"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls-native-roots", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls-webpki-roots", "json"] }
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"

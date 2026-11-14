@@ -59,6 +59,12 @@ through an explicit resolver, and certificate-validated HTTPS bound to the tunne
 Checks repeat after ten seconds; the UI expires status after thirty seconds.
 These are connection checks, not a certified protection or exit-identity claim.
 
+The native window keeps a requested connection in Connecting until a fresh helper
+status acknowledges that request. Old OFF or Connected snapshots cannot overwrite
+a pending toggle. Connecting, endpoint retries and disconnecting use the system
+progress spinner; a real failure or expired status still clears Connected. The
+standalone builder runs the connection-state regression tests before packaging.
+
 The root daemon remembers ON intent across app closure and restart and retries
 direct endpoints after failed checks. Failed checks remove the tunnel before a
 new attempt. This implementation has **no kill switch**: ordinary traffic can
@@ -121,3 +127,13 @@ LaunchDaemon. Do not remove an active tunnel's configuration or kill only the UI
 to disconnect it. Keep private identity state and server backups until deliberate
 removal is requested. Reboot, sleep/wake and helper-crash behavior still need
 hardware acceptance testing beyond a successful interactive connection.
+
+## Application icon
+
+The standalone builder now embeds the shared tape icon and sets `CFBundleIconFile`.
+For an existing installed app, a signed candidate bundle can be prepared by copying
+the app, adding `clients/assets/DuctTape.icns`, updating its plist and re-signing
+locally. `scripts/apple/update-personal-icon.sh CANDIDATE_APP` installs that reviewed
+candidate with administrator authorization and keeps a timestamped app backup in
+`/Library/Application Support/Duct-Tape VPN`. It leaves the helper and private
+connection state untouched.
