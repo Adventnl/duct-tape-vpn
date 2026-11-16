@@ -39,10 +39,7 @@ struct ContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Duct-Tape VPN").font(.system(size: 30, weight: .semibold))
-                    Text("Your server. Your connection.").font(.body).foregroundStyle(.secondary)
-                }
+                Text("Duct-Tape VPN").font(.system(size: 30, weight: .semibold))
                 VStack(spacing: 18) {
                     ZStack {
                         if connection.state.working {
@@ -57,23 +54,19 @@ struct ContentView: View {
                         .accessibilityHidden(true)
                     VStack(spacing: 8) {
                         Text(connection.title).font(.system(size: 25, weight: .semibold)).accessibilityAddTraits(.updatesFrequently)
-                        Text(connection.detail).font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        if ["error", "unavailable"].contains(connection.phase) {
+                            Text(connection.detail).font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     Button(action: connection.toggle) { Text(connection.desired ? "Disconnect" : "Connect").frame(minWidth: 126, minHeight: 28) }
                         .buttonStyle(.borderedProminent).controlSize(.large).keyboardShortcut(.defaultAction)
                         .disabled(connection.busy || connection.phase == "unavailable")
                 }.frame(maxWidth: .infinity).padding(.vertical, 12)
                 VStack(spacing: 0) {
-                    row("Server", "Home server")
-                    Divider().padding(.leading, 16)
                     row("Connection", "Direct WireGuard")
                     if !connection.endpoint.isEmpty { Divider().padding(.leading, 16); row("Address", connection.endpoint) }
                     if connection.phase == "connected" { Divider().padding(.leading, 16); row("Internet exit", connection.exitIP) }
                 }.background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 16))
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Reconnects while switched on, including after restart. Closing this window keeps the VPN running.")
-                    Text("Development build. No kill switch. China reachability has not been tested.")
-                }.font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.padding(30).frame(maxWidth: 480)
         }.frame(minWidth: 420, minHeight: 620).background(Color(nsColor: .windowBackgroundColor))
     }

@@ -86,26 +86,24 @@ class VpnState {
     }
     if (!paired) {
       return enrollment == 'pending'
-          ? 'Waiting for your server owner to approve this device.'
-          : 'Set up your home server to connect.';
+          ? 'Waiting for device approval.'
+          : '';
     }
     if (permission == PermissionState.denied ||
         permission == PermissionState.restricted) {
       return 'Allow VPN access in settings to connect.';
     }
     if (desired == Desired.off) {
-      return tunnel == Tunnel.down
-          ? 'Connect to use your home server.'
-          : 'Disconnecting from your home server.';
+      return '';
     }
     if (protection == Protection.blocked) {
       return 'Internet access is blocked while the VPN reconnects.';
     }
     if (connectionAt(now) == ConnectionStatus.connected) {
-      return 'Your internet connection is using your home server.';
+      return '';
     }
     if (connectionAt(now) == ConnectionStatus.connecting) {
-      return 'Connecting to your home server.';
+      return '';
     }
     if (connectionCheck == ConnectionCheck.failed &&
         connectionDetail != null &&

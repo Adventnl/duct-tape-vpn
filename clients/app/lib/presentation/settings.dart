@@ -204,17 +204,6 @@ class _SettingsState extends State<Settings> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 28),
-                    child: Text(
-                      'Your connection.',
-                      style: TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                  ),
                   if (working)
                     const Padding(
                       padding: EdgeInsets.only(bottom: 24),
@@ -236,7 +225,6 @@ class _SettingsState extends State<Settings> {
                   if (!state.nativeAvailable)
                     SettingsGroup(
                       title: 'Connection setup',
-                      footer: 'A native VPN service is required. The interface cannot create a tunnel by itself.',
                       children: [
                         const SettingsRow(
                           title: 'Native service unavailable',
@@ -294,7 +282,7 @@ class _SettingsState extends State<Settings> {
                       state.enrollment != 'pending')
                     SettingsGroup(
                       title: 'Activate this device',
-                      footer: 'Enter the code from your server. Each code works once. Your connection stays saved.',
+                      footer: 'Enter a single-use code from the server.',
                       children: [
                         if (!useInvitation && widget.activationOrigin.isEmpty)
                           GroupField(
@@ -352,8 +340,6 @@ class _SettingsState extends State<Settings> {
                     ),
                   if (state.paired && !state.owner)
                     const SettingsGroup(
-                      title: 'Connection saved',
-                      footer: 'Return to VPN and tap Connect. You only need a code when adding a new device.',
                       children: [
                         SettingsRow(
                           title: 'This device is activated',
@@ -363,7 +349,7 @@ class _SettingsState extends State<Settings> {
                     ),
                   if (state.owner) ...[
                     SettingsGroup(
-                      title: 'Your devices',
+                      title: 'Devices',
                       children: [
                         action(
                           'Invite a device',

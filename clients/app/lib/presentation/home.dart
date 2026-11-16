@@ -26,6 +26,7 @@ class Home extends StatelessWidget {
       final connecting = connection == ConnectionStatus.connecting;
       final blue = AppColors.blue(context);
       final heading = state.label(now);
+      final message = state.connectionMessage(now);
       final action = !state.nativeAvailable
           ? 'Check setup'
           : !state.paired
@@ -148,11 +149,12 @@ class Home extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              if (message.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               Semantics(
                                 liveRegion: true,
                                 child: Text(
-                                  state.connectionMessage(now),
+                                  message,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 15,
@@ -161,6 +163,7 @@ class Home extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              ],
                               const SizedBox(height: 28),
                               FilledButton(
                                 onPressed: controller.busy
@@ -208,13 +211,10 @@ class Home extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             SettingsGroup(
-                              footer: 'Your server. Your connection.',
                               children: [
                                 SettingsRow(
-                                  title: 'Home server',
-                                  subtitle: state.paired
-                                      ? 'Personal WireGuard connection'
-                                      : 'Pair your server to get started',
+                                  title: 'Server',
+                                  subtitle: state.paired ? null : 'Activate this device',
                                   icon: CupertinoIcons.house,
                                   onTap: () => _settings(context),
                                 ),
