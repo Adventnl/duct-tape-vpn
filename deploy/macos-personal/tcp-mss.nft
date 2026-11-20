@@ -1,0 +1,19 @@
+# 1160 bytes of TCP data plus 40 bytes of inner IPv4/TCP headers fit in
+# 1200 bytes (already aligned for WireGuard padding). IPv6/UDP/WireGuard
+# add 80 bytes, for a 1280-byte outer packet.
+define mac_tcp_mss = 1160
+
+destroy table ip dtvpn_mac_tcp_mss
+table ip dtvpn_mac_tcp_mss {
+  comment "Duct-Tape VPN Mac TCP MSS v1";
+
+  chain from_mac {
+    type filter hook prerouting priority mangle; policy accept;
+    iifname "dtvpn0" ip saddr 10.77.0.3 tcp flags & (syn | rst) == syn tcp option maxseg size > $mac_tcp_mss counter tcp option maxseg size set $mac_tcp_mss
+  }
+
+  chain to_mac {
+    type filter hook postrouting priority mangle; policy accept;
+    oifname "dtvpn0" ip daddr 10.77.0.3 tcp flags & (syn | rst) == syn tcp option maxseg size > $mac_tcp_mss counter tcp option maxseg size set $mac_tcp_mss
+  }
+}

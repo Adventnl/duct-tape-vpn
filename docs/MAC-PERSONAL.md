@@ -80,6 +80,20 @@ LAN, including use of a public IPv6 address, cannot prove outside-home access.
 The current IP literals do not automatically track ISP address/prefix changes.
 WireGuard has no traffic obfuscation; China reachability is not guaranteed.
 
+## TCP transfers over narrow paths
+
+The optional server rules in `deploy/macos-personal` cap the Mac peer's IPv4 TCP
+MSS at 1160 bytes in both directions. This fits a 1280-byte IPv6 path after
+WireGuard encapsulation. The rules cover connections to the server and forwarded
+traffic, and apply when a new TCP connection opens.
+
+On the server, install `tcp-mss.nft` as `/etc/duct-tape-vpn/mac-tcp-mss.nft` and
+the unit as `/etc/systemd/system/dtvpn-mac-tcp-mss.service`. Validate the rules
+with `nft --check --file /etc/duct-tape-vpn/mac-tcp-mss.nft`, then run
+`systemctl daemon-reload` and `systemctl enable --now dtvpn-mac-tcp-mss.service`.
+Inspect MSS rewrites by direction with `nft list table ip dtvpn_mac_tcp_mss`.
+To remove the rules, run `systemctl disable --now dtvpn-mac-tcp-mss.service`.
+
 ## Inspection and recovery
 
 On 2026-11-12 the native build, installation, actual app Connect/Disconnect,

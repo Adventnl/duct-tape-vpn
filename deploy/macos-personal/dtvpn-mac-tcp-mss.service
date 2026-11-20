@@ -1,0 +1,17 @@
+[Unit]
+Description=Duct-Tape VPN Mac TCP MSS limit
+After=nftables.service ufw.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft --file /etc/duct-tape-vpn/mac-tcp-mss.nft
+ExecReload=/usr/sbin/nft --file /etc/duct-tape-vpn/mac-tcp-mss.nft
+ExecStop=/usr/sbin/nft destroy table ip dtvpn_mac_tcp_mss
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
